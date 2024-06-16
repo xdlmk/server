@@ -8,7 +8,24 @@ ChatServer::ChatServer(QObject *parent)
         qInfo() <<"Unable to start the server: " << this->errorString();
     }
     else
+    {
         qInfo() << "Server started on host " << this->serverAddress().toString() <<" port " <<this->serverPort();
+        QSqlDatabase db = QSqlDatabase::addDatabase("QMYSQL");
+        db.setHostName("127.0.0.1");
+        db.setPort(3306);
+        db.setDatabaseName("blockgram");
+        db.setUserName("admin");
+        db.setPassword("admin-password");
+        if(db.open())
+        {
+            qDebug() << "Database is connected";
+        }
+        else
+        {
+            QSqlError error = db.lastError();
+            qDebug() << "Error connecting to database:" << error.text();
+        }
+    }
 }
 
 void ChatServer::incomingConnection(qintptr handle)
@@ -50,10 +67,24 @@ void ChatServer::readClient()
             QString password = json["password"].toString();
             QJsonObject jsonLogin;
             jsonLogin["flag"] = "login";
+            QSqlQuery query;
+            query.prepare("SELECT COUNT(*) FROM users WHERE userLogin = :userLogin AND userPassword = :userPassword");
+            query.bindValue(":userLogin", login);
+            query.bindValue(":userPassword", password);
 
-            if(login == "admin" and password == "admin")
-            {
-                jsonLogin["success"] = "ok";
+            if (!query.exec()) {
+                qDebug() << "Ошибка выполнения запроса:" << query.lastError().text();
+                jsonLogin["success"] = "error";
+            }
+            else {
+                query.next();
+                int count = query.value(0).toInt();
+                if (count > 0) {
+                    jsonLogin["success"] = "ok";
+                } else {
+                    jsonLogin["success"] = "poor";
+                }
+            }
                 QJsonDocument sendDoc(jsonLogin);
                 qDebug() << "JSON to send:" << sendDoc.toJson(QJsonDocument::Indented); // Вывод JSON с отступами для читаемости
                 QByteArray bytes;
@@ -61,19 +92,6 @@ void ChatServer::readClient()
                 out.setVersion(QDataStream::Qt_6_7);
                 out << sendDoc.toJson();
                 socket->write(bytes);
-
-            }
-            else
-            {
-               jsonLogin["success"] = "poor";
-               QJsonDocument sendDoc(jsonLogin);
-               qDebug() << "JSON to send:" << sendDoc.toJson(QJsonDocument::Indented); // Вывод JSON с отступами для читаемости
-               QByteArray bytes;
-               QDataStream out(&bytes,QIODevice::WriteOnly);
-               out.setVersion(QDataStream::Qt_6_7);
-               out << sendDoc.toJson();
-               socket->write(bytes);
-            }
         }
         else if (flag == "message")
         {

@@ -7,6 +7,9 @@
 #include <QList>
 #include <QJsonObject>
 #include <QJsonDocument>
+#include <QSqlDatabase>
+#include <QtSql>
+#include <QSqlQuery>
 
 class ChatServer : public QTcpServer
 {
