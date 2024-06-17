@@ -29,6 +29,8 @@ private slots:
     void SendToClient(QJsonDocument doc,QTcpSocket* socket);
 
 private:
+    void connectToDB();
+
     QTcpSocket *socket;
     QByteArray data;
     QList <QTcpSocket*> clients;

@@ -10,21 +10,7 @@ ChatServer::ChatServer(QObject *parent)
     else
     {
         qInfo() << "Server started on host " << this->serverAddress().toString() <<" port " <<this->serverPort();
-        QSqlDatabase db = QSqlDatabase::addDatabase("QMYSQL");
-        db.setHostName("127.0.0.1");
-        db.setPort(3306);
-        db.setDatabaseName("blockgram");
-        db.setUserName("admin");
-        db.setPassword("admin-password");
-        if(db.open())
-        {
-            qDebug() << "Database is connected";
-        }
-        else
-        {
-            QSqlError error = db.lastError();
-            qDebug() << "Error connecting to database:" << error.text();
-        }
+        connectToDB();
     }
 }
 
@@ -60,7 +46,7 @@ void ChatServer::readClient()
         QJsonObject json = doc.object();
         QString flag = json["flag"].toString();
 
-
+        qDebug() << "Next chech flags";
         if(flag == "login")
         {
             QString login = json["login"].toString();
@@ -86,7 +72,7 @@ void ChatServer::readClient()
                 }
             }
                 QJsonDocument sendDoc(jsonLogin);
-                qDebug() << "JSON to send:" << sendDoc.toJson(QJsonDocument::Indented); // Вывод JSON с отступами для читаемости
+                qDebug() << "JSON to send:" << sendDoc.toJson(QJsonDocument::Indented);
                 QByteArray bytes;
                 QDataStream out(&bytes,QIODevice::WriteOnly);
                 out.setVersion(QDataStream::Qt_6_7);
@@ -98,6 +84,51 @@ void ChatServer::readClient()
             QString str1 = json["str"].toString();
             qDebug() << "Message:" << str1;
             SendToClient(doc,socket);
+        }
+        else if(flag == "reg")
+        {
+            qDebug() << "Flag = reg";
+            QString login = json["login"].toString();
+            QString password = json["password"].toString();
+            QJsonObject jsonReg;
+            jsonReg["flag"] = "reg";
+
+            QSqlQuery query;
+            query.prepare("SELECT COUNT(*) FROM users WHERE userLogin = :userLogin");
+            query.bindValue(":userLogin", login);
+
+            if (!query.exec()) {
+                qDebug() << "Ошибка выполнения запроса:" << query.lastError().text();
+                jsonReg["success"] = "error";
+            }
+            else {
+                query.next();
+                int count = query.value(0).toInt();
+                if (count > 0) {
+                    qDebug() << "Exec = poor";
+                    jsonReg["success"] = "poor";
+                    jsonReg["errorMes"] = "This username is taken";
+
+                } else {
+                    qDebug() << "Exec = ok";
+                    jsonReg["success"] = "ok";
+                    query.prepare("INSERT INTO `blockgram`.`users` (`userLogin`, `userPassword`, `UserName`) VALUES (:userLogin, :userPassword, :userLogin);");
+                    query.bindValue(":userLogin", login);
+                    query.bindValue(":userPassword",password);
+                    if (!query.exec()) {
+                        qDebug() << "Ошибка выполнения запроса:" << query.lastError().text();
+                        jsonReg["success"] = "error";
+                        jsonReg["errorMes"] = "Error with insert to database";
+                    }
+                }
+                QJsonDocument sendDoc(jsonReg);
+                qDebug() << "JSON to send:" << sendDoc.toJson(QJsonDocument::Indented);
+                QByteArray bytes;
+                QDataStream out(&bytes,QIODevice::WriteOnly);
+                out.setVersion(QDataStream::Qt_6_7);
+                out << sendDoc.toJson();
+                socket->write(bytes);
+            }
         }
     }
     else qDebug() << "DataStream error: 37 chatserver.cpp";
@@ -116,6 +147,25 @@ void ChatServer::SendToClient(QJsonDocument doc, QTcpSocket* socket)
         {
         client->write(data);
         }
+    }
+}
+
+void ChatServer::connectToDB()
+{
+    QSqlDatabase db = QSqlDatabase::addDatabase("QMYSQL");
+    db.setHostName("127.0.0.1");
+    db.setPort(3306);
+    db.setDatabaseName("blockgram");
+    db.setUserName("admin");
+    db.setPassword("admin-password");
+    if(db.open())
+    {
+        qDebug() << "Database is connected";
+    }
+    else
+    {
+        QSqlError error = db.lastError();
+        qDebug() << "Error connecting to database:" << error.text();
     }
 }
 
