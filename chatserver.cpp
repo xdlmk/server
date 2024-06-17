@@ -67,6 +67,7 @@ void ChatServer::readClient()
                 int count = query.value(0).toInt();
                 if (count > 0) {
                     jsonLogin["success"] = "ok";
+                    jsonLogin["name"] = json["login"];
                 } else {
                     jsonLogin["success"] = "poor";
                 }
@@ -82,7 +83,8 @@ void ChatServer::readClient()
         else if (flag == "message")
         {
             QString str1 = json["str"].toString();
-            qDebug() << "Message:" << str1;
+            QString name = json["name"].toString();
+            qDebug() << "Message:" << str1 << " from " << name;
             SendToClient(doc,socket);
         }
         else if(flag == "reg")
@@ -115,6 +117,7 @@ void ChatServer::readClient()
                     query.prepare("INSERT INTO `blockgram`.`users` (`userLogin`, `userPassword`, `UserName`) VALUES (:userLogin, :userPassword, :userLogin);");
                     query.bindValue(":userLogin", login);
                     query.bindValue(":userPassword",password);
+                    jsonReg["name"] = json["login"];
                     if (!query.exec()) {
                         qDebug() << "Ошибка выполнения запроса:" << query.lastError().text();
                         jsonReg["success"] = "error";
@@ -172,6 +175,7 @@ void ChatServer::connectToDB()
 void ChatServer::disconnectClient()
 {
     QTcpSocket *clientSocket = qobject_cast<QTcpSocket*>(sender());
+    qDebug()<< "Client disconnect";
     if(clientSocket)
     {
         clients.removeAll(clientSocket);
