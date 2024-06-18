@@ -68,6 +68,7 @@ void ChatServer::readClient()
                 if (count > 0) {
                     jsonLogin["success"] = "ok";
                     jsonLogin["name"] = json["login"];
+                    jsonLogin["password"] = json["password"];
                 } else {
                     jsonLogin["success"] = "poor";
                 }
@@ -118,6 +119,7 @@ void ChatServer::readClient()
                     query.bindValue(":userLogin", login);
                     query.bindValue(":userPassword",password);
                     jsonReg["name"] = json["login"];
+                    jsonReg["password"] = json["password"];
                     if (!query.exec()) {
                         qDebug() << "Ошибка выполнения запроса:" << query.lastError().text();
                         jsonReg["success"] = "error";
