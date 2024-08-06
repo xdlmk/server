@@ -4,9 +4,12 @@
 #include <QObject>
 #include <QTcpSocket>
 #include <QTcpServer>
+
 #include <QList>
+#include <QMultiMap>
 #include <QJsonObject>
 #include <QJsonDocument>
+
 #include <QSqlDatabase>
 #include <QtSql>
 #include <QSqlQuery>
@@ -26,14 +29,14 @@ protected:
 private slots:
     void readClient();
     void disconnectClient();
-    void SendToClient(QJsonDocument doc,QTcpSocket* socket);
+    void SendToClient(QJsonDocument doc,const QString& senderLogin);
 
 private:
     void connectToDB();
 
     QTcpSocket *socket;
     QByteArray data;
-    QList <QTcpSocket*> clients;
+    QMultiMap <QString, QTcpSocket*> clients;
 };
 
 #endif // CHATSERVER_H

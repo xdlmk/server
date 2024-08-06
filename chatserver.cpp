@@ -19,7 +19,6 @@ void ChatServer::incomingConnection(qintptr handle)
     socket = new QTcpSocket(this);
     if(socket->setSocketDescriptor(handle))
     {
-        clients << socket;
         connect(socket,&QTcpSocket::readyRead,this,&ChatServer::readClient);
         connect(socket,&QTcpSocket::disconnected,this,&ChatServer::disconnectClient);
         qDebug() << "Client connect: " << handle;
@@ -69,6 +68,8 @@ void ChatServer::readClient()
                     jsonLogin["success"] = "ok";
                     jsonLogin["name"] = json["login"];
                     jsonLogin["password"] = json["password"];
+                    clients.insert(login, socket);
+                    qDebug() << clients;
                 } else {
                     jsonLogin["success"] = "poor";
                 }
@@ -84,9 +85,9 @@ void ChatServer::readClient()
         else if (flag == "message")
         {
             QString str1 = json["str"].toString();
-            QString name = json["name"].toString();
-            qDebug() << "Message:" << str1 << " from " << name;
-            SendToClient(doc,socket);
+            QString login = json["login"].toString();
+            qDebug() << "Message:" << str1 << " from " << login;
+            SendToClient(doc,login);
         }
         else if(flag == "reg")
         {
@@ -140,17 +141,36 @@ void ChatServer::readClient()
 
 }
 
-void ChatServer::SendToClient(QJsonDocument doc, QTcpSocket* socket)
+void ChatServer::SendToClient(QJsonDocument doc, const QString& senderLogin)
 {
     data.clear();
     QDataStream out(&data,QIODevice::WriteOnly);
     out.setVersion(QDataStream::Qt_6_7);
     out << doc.toJson();
-    for( QTcpSocket* client : clients)
+    for(auto it = clients.constBegin(); it != clients.constEnd(); ++it)
     {
-        if(client != socket)
+        qDebug()<< it.key() << "   5" << senderLogin;
+        if(it.key()!= senderLogin)
         {
-        client->write(data);
+            qDebug() << "works if";
+            it.value()->write(data);
+        }
+        else
+        {
+            qDebug()<< it.key();
+            qDebug() << "Enter into outGoing else";
+            QJsonDocument docTo = doc;
+            QJsonObject jsonToOut = docTo.object();
+            jsonToOut["Out"] = "out";
+            QJsonDocument docToOut(jsonToOut);
+
+            QByteArray dataToOut;
+            dataToOut.clear();
+            QDataStream outg(&dataToOut,QIODevice::WriteOnly);
+            outg.setVersion(QDataStream::Qt_6_7);
+            outg << docToOut.toJson();
+
+            it.value()->write(dataToOut);
         }
     }
 }
@@ -180,7 +200,16 @@ void ChatServer::disconnectClient()
     qDebug()<< "Client disconnect";
     if(clientSocket)
     {
-        clients.removeAll(clientSocket);
+        QString loginToRemove;
+        for (auto it = clients.begin(); it!= clients.end();it++)
+        {
+            if(it.value() == clientSocket)
+            {
+                loginToRemove =it.key();
+                break;
+            }
+        }
+        clients.remove(loginToRemove);
         clientSocket->deleteLater();
     }
 }
