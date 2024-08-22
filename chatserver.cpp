@@ -74,13 +74,13 @@ void ChatServer::readClient()
                     jsonLogin["success"] = "poor";
                 }
             }
-                QJsonDocument sendDoc(jsonLogin);
-                qDebug() << "JSON to send:" << sendDoc.toJson(QJsonDocument::Indented);
-                QByteArray bytes;
-                QDataStream out(&bytes,QIODevice::WriteOnly);
-                out.setVersion(QDataStream::Qt_6_7);
-                out << sendDoc.toJson();
-                socket->write(bytes);
+            QJsonDocument sendDoc(jsonLogin);
+            qDebug() << "JSON to send:" << sendDoc.toJson(QJsonDocument::Indented);
+            QByteArray bytes;
+            QDataStream out(&bytes,QIODevice::WriteOnly);
+            out.setVersion(QDataStream::Qt_6_7);
+            out << sendDoc.toJson();
+            socket->write(bytes);
         }
         else if (flag == "message")
         {
@@ -134,6 +134,25 @@ void ChatServer::readClient()
                 out.setVersion(QDataStream::Qt_6_7);
                 out << sendDoc.toJson();
                 socket->write(bytes);
+            }
+        }
+        else if(flag == "logout")
+        {
+            QTcpSocket *clientSocket = qobject_cast<QTcpSocket*>(sender());
+            qDebug()<< "Client logout";
+            qDebug() << clients;
+
+            QMultiMap<QString, QTcpSocket*>::iterator it;
+
+            for (it = clients.begin(); it != clients.end(); ++it) {
+                if (it.value() == clientSocket) {
+                    qDebug() << clients;
+
+                    QTcpSocket *socketValue = it.value();
+                    it = clients.erase(it);
+                    qDebug() << clients;
+                    break;
+                }
             }
         }
     }
