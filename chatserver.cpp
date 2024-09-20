@@ -48,42 +48,15 @@ void ChatServer::readClient()
         qDebug() << "Next chech flags";
         if(flag == "login")
         {
-            QString login = json["login"].toString();
-            QString password = json["password"].toString();
-            QJsonObject jsonLogin;
-            jsonLogin["flag"] = "login";
-            QSqlQuery query;
-            query.prepare("SELECT COUNT(*) FROM users WHERE userLogin = :userLogin AND userPassword = :userPassword");
-            query.bindValue(":userLogin", login);
-            query.bindValue(":userPassword", password);
+            qDebug() << "Flag == login";
 
-            if (!query.exec()) {
-                qDebug() << "Ошибка выполнения запроса:" << query.lastError().text();
-                jsonLogin["success"] = "error";
-            }
-            else {
-                query.next();
-                int count = query.value(0).toInt();
-                if (count > 0) {
-                    jsonLogin["success"] = "ok";
-                    jsonLogin["name"] = json["login"];
-                    jsonLogin["password"] = json["password"];
-                    clients.insert(login, socket);
-                    qDebug() << clients;
-                } else {
-                    jsonLogin["success"] = "poor";
-                }
-            }
-            QJsonDocument sendDoc(jsonLogin);
-            qDebug() << "JSON to send:" << sendDoc.toJson(QJsonDocument::Indented);
-            QByteArray bytes;
-            QDataStream out(&bytes,QIODevice::WriteOnly);
-            out.setVersion(QDataStream::Qt_6_7);
-            out << sendDoc.toJson();
-            socket->write(bytes);
+            QJsonDocument sendDoc(loginProcess(json));
+            sendJson(sendDoc);
         }
         else if (flag == "message")
         {
+            qDebug() << "Flag == message ";
+
             QString str1 = json["str"].toString();
             QString login = json["login"].toString();
             qDebug() << "Message:" << str1 << " from " << login;
@@ -91,50 +64,10 @@ void ChatServer::readClient()
         }
         else if(flag == "reg")
         {
-            qDebug() << "Flag = reg";
-            QString login = json["login"].toString();
-            QString password = json["password"].toString();
-            QJsonObject jsonReg;
-            jsonReg["flag"] = "reg";
+            qDebug() << "Flag == reg";
 
-            QSqlQuery query;
-            query.prepare("SELECT COUNT(*) FROM users WHERE userLogin = :userLogin");
-            query.bindValue(":userLogin", login);
-
-            if (!query.exec()) {
-                qDebug() << "Ошибка выполнения запроса:" << query.lastError().text();
-                jsonReg["success"] = "error";
-            }
-            else {
-                query.next();
-                int count = query.value(0).toInt();
-                if (count > 0) {
-                    qDebug() << "Exec = poor";
-                    jsonReg["success"] = "poor";
-                    jsonReg["errorMes"] = "This username is taken";
-
-                } else {
-                    qDebug() << "Exec = ok";
-                    jsonReg["success"] = "ok";
-                    query.prepare("INSERT INTO `blockgram`.`users` (`userLogin`, `userPassword`, `UserName`) VALUES (:userLogin, :userPassword, :userLogin);");
-                    query.bindValue(":userLogin", login);
-                    query.bindValue(":userPassword",password);
-                    jsonReg["name"] = json["login"];
-                    jsonReg["password"] = json["password"];
-                    if (!query.exec()) {
-                        qDebug() << "Ошибка выполнения запроса:" << query.lastError().text();
-                        jsonReg["success"] = "error";
-                        jsonReg["errorMes"] = "Error with insert to database";
-                    }
-                }
-                QJsonDocument sendDoc(jsonReg);
-                qDebug() << "JSON to send:" << sendDoc.toJson(QJsonDocument::Indented);
-                QByteArray bytes;
-                QDataStream out(&bytes,QIODevice::WriteOnly);
-                out.setVersion(QDataStream::Qt_6_7);
-                out << sendDoc.toJson();
-                socket->write(bytes);
-            }
+            QJsonDocument sendDoc(regProcess(json));
+            sendJson(sendDoc);
         }
         else if(flag == "logout")
         {
@@ -162,10 +95,14 @@ void ChatServer::readClient()
 
 void ChatServer::SendToClient(QJsonDocument doc, const QString& senderLogin)
 {
+    QByteArray jsonDataOut = doc.toJson(QJsonDocument::Compact);
     data.clear();
     QDataStream out(&data,QIODevice::WriteOnly);
     out.setVersion(QDataStream::Qt_6_7);
-    out << doc.toJson();
+    out<<quint32(jsonDataOut.size());
+    out.writeRawData(jsonDataOut.data(),jsonDataOut.size());
+
+    //out << doc.toJson();
     for(auto it = clients.constBegin(); it != clients.constEnd(); ++it)
     {
         qDebug()<< it.key() << "   5" << senderLogin;
@@ -173,6 +110,7 @@ void ChatServer::SendToClient(QJsonDocument doc, const QString& senderLogin)
         {
             qDebug() << "works if";
             it.value()->write(data);
+            it.value()->flush();
         }
         else
         {
@@ -182,16 +120,145 @@ void ChatServer::SendToClient(QJsonDocument doc, const QString& senderLogin)
             QJsonObject jsonToOut = docTo.object();
             jsonToOut["Out"] = "out";
             QJsonDocument docToOut(jsonToOut);
+            QByteArray jsonDataOutg = docToOut.toJson(QJsonDocument::Compact);
 
             QByteArray dataToOut;
             dataToOut.clear();
             QDataStream outg(&dataToOut,QIODevice::WriteOnly);
             outg.setVersion(QDataStream::Qt_6_7);
-            outg << docToOut.toJson();
+
+            outg<< quint32(jsonDataOutg.size());
+            outg.writeRawData(jsonDataOutg.data(),jsonDataOutg.size());
+
+            //outg << docToOut.toJson();
 
             it.value()->write(dataToOut);
+            it.value()->flush();
         }
     }
+}
+
+void ChatServer::sendJson(const QJsonDocument &sendDoc)
+{
+    qDebug() << "JSON to send:" << sendDoc.toJson(QJsonDocument::Indented);
+    QByteArray jsonData = sendDoc.toJson(QJsonDocument::Compact);
+
+    qDebug() << "Отправляемые данные в байтах:" << jsonData;
+
+    QByteArray bytes;
+    bytes.clear();
+    QDataStream out(&bytes,QIODevice::WriteOnly);
+    out.setVersion(QDataStream::Qt_6_7);
+
+    ////////////////////
+    //QByteArray jsonData = sendDoc.toJson(QJsonDocument::Compact);
+
+    out << quint32(jsonData.size());
+    out.writeRawData(jsonData.data(), jsonData.size());
+    ///////////////
+    //out << sendDoc.toJson();
+
+
+    socket->write(bytes);
+    socket->flush();
+}
+
+QJsonObject ChatServer::loginProcess(QJsonObject json)
+{
+    QString login = json["login"].toString();
+    QString password = json["password"].toString();
+    QJsonObject jsonLogin;
+    jsonLogin["flag"] = "login";
+    QSqlQuery query;
+    query.prepare("SELECT COUNT(*) FROM users2 WHERE userLogin = :userLogin AND userPassword = :userPassword");
+    query.bindValue(":userLogin", login);
+    query.bindValue(":userPassword", password);
+
+    if (!query.exec()) {
+        qDebug() << "Ошибка выполнения запроса:" << query.lastError().text();
+        jsonLogin["success"] = "error";
+    }
+    else {
+        query.next();
+        int count = query.value(0).toInt();
+        if (count > 0) {
+            jsonLogin["success"] = "ok";
+            jsonLogin["name"] = json["login"];
+            jsonLogin["password"] = json["password"];
+
+            query.prepare("SELECT userProfileImage FROM users2 WHERE userLogin = :userLogin AND userPassword = :userPassword");
+            query.bindValue(":userLogin", login);
+            query.bindValue(":userPassword", password);
+            if (!query.exec()) {
+                qDebug() << "Ошибка выполнения для получения изображения:" << query.lastError().text();
+            }
+            if (!query.next()) {
+                qDebug() << "Нет результатов для данного запроса";
+            }
+            QByteArray imageData = query.value(0).toByteArray();
+
+            QString base64ImageData = QString::fromLatin1(imageData.toBase64());
+
+            jsonLogin["profileImage"] = base64ImageData;
+            clients.insert(login, socket);
+            qDebug() << clients;
+        } else {
+            jsonLogin["success"] = "poor";
+        }
+    }
+    return jsonLogin;
+}
+
+QJsonObject ChatServer::regProcess(QJsonObject json)
+{
+    QString login = json["login"].toString();
+    QString password = json["password"].toString();
+    QJsonObject jsonReg;
+    jsonReg["flag"] = "reg";
+
+    QSqlQuery query;
+    query.prepare("SELECT COUNT(*) FROM users2 WHERE userLogin = :userLogin");
+    query.bindValue(":userLogin", login);
+
+    if (!query.exec()) {
+        qDebug() << "Ошибка выполнения запроса:" << query.lastError().text();
+        jsonReg["success"] = "error";
+    }
+    else {
+        query.next();
+        int count = query.value(0).toInt();
+        if (count > 0) {
+            qDebug() << "Exec = poor";
+            jsonReg["success"] = "poor";
+            jsonReg["errorMes"] = "This username is taken";
+
+        } else {
+            qDebug() << "Exec = ok";
+            jsonReg["success"] = "ok";
+
+            QFile file("resources/images/defaultAvatar.png");
+            if (!file.open(QIODevice::ReadOnly)) {
+                qDebug() << "Error: could not open file for reading";
+            }
+            else {
+                QByteArray imageData = file.readAll();
+                file.close();
+
+                query.prepare("INSERT INTO `blockgram`.`users2` (`userLogin`, `userPassword`, `userName`, `userProfileImage`) VALUES (:userLogin, :userPassword, :userLogin, :image);");
+                query.bindValue(":userLogin", login);
+                query.bindValue(":userPassword",password);
+                query.bindValue(":image",imageData);
+                jsonReg["name"] = json["login"];
+                jsonReg["password"] = json["password"];
+                if (!query.exec()) {
+                    qDebug() << "Ошибка выполнения запроса:" << query.lastError().text();
+                    jsonReg["success"] = "error";
+                    jsonReg["errorMes"] = "Error with insert to database";
+                }
+            }
+        }
+    }
+    return jsonReg;
 }
 
 void ChatServer::connectToDB()

@@ -10,6 +10,10 @@
 #include <QJsonObject>
 #include <QJsonDocument>
 
+#include <QImage>
+#include <QBuffer>
+#include <QImageReader>
+
 #include <QSqlDatabase>
 #include <QtSql>
 #include <QSqlQuery>
@@ -32,6 +36,9 @@ private slots:
     void SendToClient(QJsonDocument doc,const QString& senderLogin);
 
 private:
+    void sendJson(const QJsonDocument &sendDoc);
+    QJsonObject loginProcess(QJsonObject json);
+    QJsonObject regProcess(QJsonObject json);
     void connectToDB();
 
     QTcpSocket *socket;
