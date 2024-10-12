@@ -140,10 +140,15 @@ void ChatServer::SendToClient(QJsonDocument doc, const QString& senderLogin)
 
 void ChatServer::sendJson(const QJsonDocument &sendDoc)
 {
-    qDebug() << "JSON to send:" << sendDoc.toJson(QJsonDocument::Indented);
+    QJsonObject jsonToSend = sendDoc.object();
+    jsonToSend.remove("profileImage");
+    QJsonDocument toSendDoc(jsonToSend);
+    qDebug() << "(without profileImage)JSON to send:" << toSendDoc.toJson(QJsonDocument::Indented);
+
+
     QByteArray jsonData = sendDoc.toJson(QJsonDocument::Compact);
 
-    qDebug() << "Отправляемые данные в байтах:" << jsonData;
+    //qDebug() << "Отправляемые данные в байтах:" << jsonData;
 
     QByteArray bytes;
     bytes.clear();
@@ -236,7 +241,7 @@ QJsonObject ChatServer::regProcess(QJsonObject json)
             qDebug() << "Exec = ok";
             jsonReg["success"] = "ok";
 
-            QFile file("resources/images/defaultAvatar.png");
+            QFile file("images/defaultAvatar.png");
             if (!file.open(QIODevice::ReadOnly)) {
                 qDebug() << "Error: could not open file for reading";
             }
