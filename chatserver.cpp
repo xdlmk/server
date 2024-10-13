@@ -138,6 +138,33 @@ void ChatServer::SendToClient(QJsonDocument doc, const QString& senderLogin)
     }
 }
 
+QString ChatServer::convertImageToBase64(const QString &filePath)
+{
+    QFile file(filePath);
+
+    if (!file.open(QIODevice::ReadOnly)) {
+        qDebug() << "File not open:" << file.errorString();
+        return QString();
+    }
+    QByteArray imageData = file.readAll();
+    QString base64ImageData = QString::fromLatin1(imageData.toBase64());
+
+    file.close();
+    return base64ImageData;
+}
+
+QString ChatServer::hashPassword(const QString &password)
+{
+    QByteArray hash = QCryptographicHash::hash(password.toUtf8(), QCryptographicHash::Sha256);
+    return hash.toHex();
+}
+
+bool ChatServer::checkPassword(const QString &enteredPassword, const QString &storedHash)
+{
+    QString hashOfEnteredPassword = hashPassword(enteredPassword);
+    return hashOfEnteredPassword == storedHash;
+}
+
 void ChatServer::sendJson(const QJsonDocument &sendDoc)
 {
     QJsonObject jsonToSend = sendDoc.object();
@@ -175,9 +202,8 @@ QJsonObject ChatServer::loginProcess(QJsonObject json)
     QJsonObject jsonLogin;
     jsonLogin["flag"] = "login";
     QSqlQuery query;
-    query.prepare("SELECT COUNT(*) FROM users2 WHERE userLogin = :userLogin AND userPassword = :userPassword");
-    query.bindValue(":userLogin", login);
-    query.bindValue(":userPassword", password);
+    query.prepare("SELECT password_hash FROM users WHERE userlogin = :userlogin");
+    query.bindValue(":userlogin", login);
 
     if (!query.exec()) {
         qDebug() << "Ошибка выполнения запроса:" << query.lastError().text();
@@ -185,26 +211,24 @@ QJsonObject ChatServer::loginProcess(QJsonObject json)
     }
     else {
         query.next();
-        int count = query.value(0).toInt();
-        if (count > 0) {
+        QString passwordHash = query.value(0).toString();
+        if (checkPassword(password,passwordHash))
+        {
             jsonLogin["success"] = "ok";
             jsonLogin["name"] = json["login"];
             jsonLogin["password"] = json["password"];
 
-            query.prepare("SELECT userProfileImage FROM users2 WHERE userLogin = :userLogin AND userPassword = :userPassword");
-            query.bindValue(":userLogin", login);
-            query.bindValue(":userPassword", password);
+            query.prepare("SELECT avatar_url FROM users WHERE userlogin = :userlogin");
+            query.bindValue(":userlogin", login);
             if (!query.exec()) {
                 qDebug() << "Ошибка выполнения для получения изображения:" << query.lastError().text();
             }
             if (!query.next()) {
                 qDebug() << "Нет результатов для данного запроса";
             }
-            QByteArray imageData = query.value(0).toByteArray();
+            QString avatar_url = query.value(0).toString();
 
-            QString base64ImageData = QString::fromLatin1(imageData.toBase64());
-
-            jsonLogin["profileImage"] = base64ImageData;
+            jsonLogin["profileImage"] = convertImageToBase64(avatar_url);
             clients.insert(login, socket);
             qDebug() << clients;
         } else {
@@ -217,13 +241,13 @@ QJsonObject ChatServer::loginProcess(QJsonObject json)
 QJsonObject ChatServer::regProcess(QJsonObject json)
 {
     QString login = json["login"].toString();
-    QString password = json["password"].toString();
+    QString password = hashPassword(json["password"].toString());
     QJsonObject jsonReg;
     jsonReg["flag"] = "reg";
 
     QSqlQuery query;
-    query.prepare("SELECT COUNT(*) FROM users2 WHERE userLogin = :userLogin");
-    query.bindValue(":userLogin", login);
+    query.prepare("SELECT COUNT(*) FROM users WHERE userlogin = :userlogin");
+    query.bindValue(":userlogin", login);
 
     if (!query.exec()) {
         qDebug() << "Ошибка выполнения запроса:" << query.lastError().text();
@@ -241,18 +265,12 @@ QJsonObject ChatServer::regProcess(QJsonObject json)
             qDebug() << "Exec = ok";
             jsonReg["success"] = "ok";
 
-            QFile file("images/defaultAvatar.png");
-            if (!file.open(QIODevice::ReadOnly)) {
-                qDebug() << "Error: could not open file for reading";
-            }
-            else {
-                QByteArray imageData = file.readAll();
-                file.close();
+            QString default_avatar_url = "images/defaultAvatar.png";
 
-                query.prepare("INSERT INTO `blockgram`.`users2` (`userLogin`, `userPassword`, `userName`, `userProfileImage`) VALUES (:userLogin, :userPassword, :userLogin, :image);");
-                query.bindValue(":userLogin", login);
-                query.bindValue(":userPassword",password);
-                query.bindValue(":image",imageData);
+                query.prepare("INSERT INTO `users` (`username`, `password_hash`, `userlogin`, `avatar_url`) VALUES (:username, :password_hash, :username, :avatar_url);");
+                query.bindValue(":username", login);
+                query.bindValue(":password_hash",password);
+                query.bindValue(":avatar_url",default_avatar_url);
                 jsonReg["name"] = json["login"];
                 jsonReg["password"] = json["password"];
                 if (!query.exec()) {
@@ -260,7 +278,6 @@ QJsonObject ChatServer::regProcess(QJsonObject json)
                     jsonReg["success"] = "error";
                     jsonReg["errorMes"] = "Error with insert to database";
                 }
-            }
         }
     }
     return jsonReg;
@@ -269,9 +286,9 @@ QJsonObject ChatServer::regProcess(QJsonObject json)
 void ChatServer::connectToDB()
 {
     QSqlDatabase db = QSqlDatabase::addDatabase("QMYSQL");
-    db.setHostName("127.0.0.1");
+    db.setHostName("localhost");
     db.setPort(3306);
-    db.setDatabaseName("blockgram");
+    db.setDatabaseName("test_db");
     db.setUserName("admin");
     db.setPassword("admin-password");
     if(db.open())

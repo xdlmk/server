@@ -7,6 +7,7 @@
 
 #include <QList>
 #include <QMultiMap>
+
 #include <QJsonObject>
 #include <QJsonDocument>
 
@@ -17,6 +18,8 @@
 #include <QSqlDatabase>
 #include <QtSql>
 #include <QSqlQuery>
+
+#include <QCryptographicHash>
 
 class ChatServer : public QTcpServer
 {
@@ -36,6 +39,11 @@ private slots:
     void SendToClient(QJsonDocument doc,const QString& senderLogin);
 
 private:
+    QString convertImageToBase64(const QString &filePath);
+
+    QString hashPassword(const QString &password);
+    bool checkPassword(const QString &enteredPassword, const QString &storedHash);
+
     void sendJson(const QJsonDocument &sendDoc);
     QJsonObject loginProcess(QJsonObject json);
     QJsonObject regProcess(QJsonObject json);
