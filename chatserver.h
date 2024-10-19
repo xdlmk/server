@@ -45,8 +45,17 @@ private:
     bool checkPassword(const QString &enteredPassword, const QString &storedHash);
 
     void sendJson(const QJsonDocument &sendDoc);
+
     QJsonObject loginProcess(QJsonObject json);
     QJsonObject regProcess(QJsonObject json);
+    QJsonObject searchProcess(QJsonObject json);
+
+    void updatingChatsProcess(QJsonObject json);
+    void personalMessageProcess(QJsonObject json);
+    int getOrCreateDialog(int sender_id, int receiver_id);
+    int saveMessageToDatabase(int dialogId, int senderId, int receiverId, const QString &message);
+    void sendMessageToActiveSockets(QJsonObject json, int message_id, int dialog_id);
+
     void connectToDB();
 
     QTcpSocket *socket;
