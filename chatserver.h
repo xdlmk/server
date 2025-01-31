@@ -7,6 +7,7 @@
 
 #include <QList>
 #include <QMultiMap>
+#include <QSet>
 
 #include <QJsonObject>
 #include <QJsonDocument>

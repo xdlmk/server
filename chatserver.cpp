@@ -36,12 +36,36 @@ void ChatServer::readClient()
     QDataStream in(socket);
     in.setVersion(QDataStream::Qt_6_7);
 
+    static quint32 blockSize = 0;
+
     if(in.status()== QDataStream::Ok)
     {
-        qDebug() << "read..";
-        QByteArray str;
-        in>>str;
-        QJsonDocument doc = QJsonDocument::fromJson(str);
+        if (blockSize == 0) {
+            if (socket->bytesAvailable() < sizeof(quint32))
+            {
+                return;
+            }
+            in >> blockSize;
+            qDebug() << "Block size:" << blockSize;
+        }
+
+        if (socket->bytesAvailable() < blockSize)
+        {
+            return;
+        }
+
+        QByteArray jsonData;
+        jsonData.resize(blockSize);
+        in.readRawData(jsonData.data(), blockSize);
+
+        QJsonDocument doc = QJsonDocument::fromJson(jsonData);
+
+        if (doc.isNull()) {
+            qDebug() << "Error with JSON doc check, doc is null";
+            blockSize = 0;
+            return;
+        }
+
         QJsonObject json = doc.object();
         QString flag = json["flag"].toString();
 
@@ -108,8 +132,7 @@ void ChatServer::readClient()
             updatingChatsProcess(json);
         }
     }
-    else qDebug() << "DataStream error: 37 chatserver.cpp";
-
+    blockSize = 0;
 }
 
 void ChatServer::SendToClient(QJsonDocument doc, const QString& senderLogin)
@@ -121,7 +144,6 @@ void ChatServer::SendToClient(QJsonDocument doc, const QString& senderLogin)
     out<<quint32(jsonDataOut.size());
     out.writeRawData(jsonDataOut.data(),jsonDataOut.size());
 
-    //out << doc.toJson();
     for(auto it = clients.constBegin(); it != clients.constEnd(); ++it)
     {
         qDebug()<< it.key() << "   5" << senderLogin;
@@ -414,8 +436,10 @@ void ChatServer::updatingChatsProcess(QJsonObject json)
             QJsonDocument sendDoc(updatingJson);
             sendJson(sendDoc);
         }
-    } else if (json.contains("userlogin")){
+    }
+    if (json.contains("userlogin")){
         QString userlogin = json["userlogin"].toString();
+        QJsonArray dialogIdsArray= json["dialogIds"].toArray();
         int user_id = -1;
 
         QSqlQuery query;
@@ -444,6 +468,15 @@ void ChatServer::updatingChatsProcess(QJsonObject json)
         } else {
             qDebug() << "Ошибка получения диалогов для user_id" << user_id << dialogQuery.lastError().text();
         }
+
+        QSet<int> idsToDelete;
+        for (const QJsonValue &value : dialogIdsArray) {
+            idsToDelete.insert(value.toInt());
+        }
+        dialogIds.erase(std::remove_if(dialogIds.begin(), dialogIds.end(), [&idsToDelete](int id) {
+                       return idsToDelete.contains(id);
+                   }), dialogIds.end());
+        qDebug() << dialogIds;
 
         for (int dialog_id : dialogIds) {
             QSqlQuery query;
@@ -593,10 +626,16 @@ void ChatServer::sendMessageToActiveSockets(QJsonObject json, int message_id, in
         QJsonDocument docTo = doc;
         QJsonObject jsonToOut = docTo.object();
         jsonToOut.remove("sender_login");
+
+        int sender_id = jsonToOut["sender_id"].toInt();
+
         jsonToOut.remove("sender_id");
         jsonToOut["receiver_login"] = json["receiver_login"];
         jsonToOut["receiver_id"] = json["receiver_id"];
-        qDebug() <<  jsonToOut["receiver_id"].toInt();
+
+        int receiver_id = jsonToOut["receiver_id"].toInt();
+
+        qDebug() <<  receiver_id;
         QJsonDocument docToOut(jsonToOut);
         QByteArray jsonDataOutg = docToOut.toJson(QJsonDocument::Compact);
 
@@ -614,7 +653,10 @@ void ChatServer::sendMessageToActiveSockets(QJsonObject json, int message_id, in
             socket->flush();
         }
 
-
+        if(sender_login == receiver_login and sender_id == receiver_id)
+        {
+            return;
+        }
     } else {
         qDebug() << "sender offline";
     }
@@ -636,7 +678,7 @@ void ChatServer::sendMessageToActiveSockets(QJsonObject json, int message_id, in
 
 void ChatServer::connectToDB()
 {
-    QSqlDatabase db = QSqlDatabase::addDatabase("QMYSQL");
+    QSqlDatabase db = QSqlDatabase::addDatabase("QMARIADB");
     db.setHostName("localhost");
     db.setPort(3306);
     db.setDatabaseName("test_db");
@@ -648,6 +690,7 @@ void ChatServer::connectToDB()
     }
     else
     {
+        qDebug() << "Available drivers:" << QSqlDatabase::drivers();
         QSqlError error = db.lastError();
         qDebug() << "Error connecting to database:" << error.text();
     }
