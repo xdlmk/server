@@ -131,6 +131,13 @@ void ChatServer::readClient()
 
             updatingChatsProcess(json);
         }
+        else if(flag == "edit")
+        {
+            qDebug() << "Flag == edit";
+
+            QJsonDocument sendDoc(editProfileProcess(json));
+            sendJson(sendDoc);
+        }
     }
     blockSize = 0;
 }
@@ -354,6 +361,43 @@ QJsonObject ChatServer::searchProcess(QJsonObject json)
     searchJson["flag"] = "search";
     searchJson["results"] = jsonArray;
     return searchJson;
+}
+
+QJsonObject ChatServer::editProfileProcess(QJsonObject dataEditProfile)
+{
+    QString editable = dataEditProfile["editable"].toString();
+    QString editInformation = dataEditProfile["editInformation"].toString();
+    int user_id = dataEditProfile["user_id"].toInt();
+    QSqlQuery query;
+    if(editable == "Name")
+    {
+        query.prepare("UPDATE users SET username = :username WHERE id_user = :id_user");
+        query.bindValue(":username", editInformation);
+        query.bindValue(":id_user", user_id);
+    }
+    else if(editable == "Phone number")
+    {
+        query.prepare("UPDATE users SET phone_number = :phone_number WHERE id_user = :id_user");
+        query.bindValue(":phone_number", editInformation);
+        query.bindValue(":id_user", user_id);
+    }
+    else if(editable == "Username")
+    {
+        query.prepare("UPDATE users SET userlogin = :userlogin WHERE id_user = :id_user");
+        query.bindValue(":userlogin", editInformation);
+        query.bindValue(":id_user", user_id);
+    }
+
+    if (!query.exec()) {
+        qDebug() << "Ошибка выполнения запроса:" << query.lastError().text();
+    }
+
+    QJsonObject editResults;
+    editResults["flag"] = "edit";
+    editResults["editable"] = editable;
+    editResults["editInformation"] =  editInformation;
+
+    return editResults;
 }
 
 void ChatServer::updatingChatsProcess(QJsonObject json)

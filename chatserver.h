@@ -50,6 +50,7 @@ private:
     QJsonObject loginProcess(QJsonObject json);
     QJsonObject regProcess(QJsonObject json);
     QJsonObject searchProcess(QJsonObject json);
+    QJsonObject editProfileProcess(QJsonObject dataEditProfile);
 
     void updatingChatsProcess(QJsonObject json);
     void personalMessageProcess(QJsonObject json);
