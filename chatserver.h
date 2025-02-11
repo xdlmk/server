@@ -34,6 +34,8 @@ signals:
 protected:
     void incomingConnection(qintptr handle) Q_DECL_OVERRIDE;
 
+public slots:
+    void saveFileToDatabase();
 private slots:
     void readClient();
     void disconnectClient();

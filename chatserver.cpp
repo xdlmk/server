@@ -29,6 +29,11 @@ void ChatServer::incomingConnection(qintptr handle)
     }
 }
 
+void ChatServer::saveFileToDatabase()
+{
+
+}
+
 void ChatServer::readClient()
 {
     qInfo() << "Get message!";
@@ -388,12 +393,24 @@ QJsonObject ChatServer::editProfileProcess(QJsonObject dataEditProfile)
         query.bindValue(":id_user", user_id);
     }
 
-    if (!query.exec()) {
-        qDebug() << "Ошибка выполнения запроса:" << query.lastError().text();
-    }
-
     QJsonObject editResults;
     editResults["flag"] = "edit";
+
+    if (!query.exec()) {
+        qDebug() << "Query execution error:" << query.lastError().text();
+        qDebug() << "Query execution error code:" << query.lastError().nativeErrorCode();
+
+        if (query.lastError().text().contains("Duplicate entry") or query.lastError().nativeErrorCode() == "1062") {
+            qDebug() << "Error: Violation of uniqueness";
+            editResults["status"] = "poor";
+            editResults["error"] = "Unique error";
+            return editResults;
+        }
+        editResults["status"] = "poor";
+        editResults["error"] = "Unknown error";
+        return editResults;
+    }
+    editResults["status"] = "ok";
     editResults["editable"] = editable;
     editResults["editInformation"] =  editInformation;
 
@@ -596,8 +613,6 @@ void ChatServer::personalMessageProcess(QJsonObject json)
     QString sender_login =  json["sender_login"].toString();
     QString message =  json["message"].toString();
 
-    //qDebug() << "personalMessageProcess " << "sender_id: " << sender_id << " receiver_id " << receiver_id;
-
     int dialog_id = getOrCreateDialog(sender_id, receiver_id);
 
     int message_id = saveMessageToDatabase(dialog_id, sender_id,receiver_id, message);
@@ -654,6 +669,7 @@ void ChatServer::sendMessageToActiveSockets(QJsonObject json, int message_id, in
     messageJson["dialog_id"] = dialog_id;
     messageJson["sender_login"] = json["sender_login"];
     messageJson["sender_id"] = json["sender_id"];
+    messageJson["fileUrl"] = json["fileUrl"];
     messageJson["time"] = QDateTime::currentDateTime().toString("HH:mm");
 
     QJsonDocument doc(messageJson);
