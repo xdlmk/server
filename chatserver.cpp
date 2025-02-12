@@ -29,9 +29,14 @@ void ChatServer::incomingConnection(qintptr handle)
     }
 }
 
-void ChatServer::saveFileToDatabase()
+void ChatServer::saveFileToDatabase(const QString &fileUrl)
 {
-
+    QSqlQuery query;
+    query.prepare("INSERT INTO `files` (`file_url`) VALUES (:fileUrl);");
+    query.bindValue(":fileUrl", fileUrl);
+    if (!query.exec()) {
+        qDebug() << "Ошибка выполнения запроса:" << query.lastError().text();
+    }
 }
 
 void ChatServer::readClient()
@@ -427,14 +432,13 @@ void ChatServer::updatingChatsProcess(QJsonObject json)
         for (const QJsonValue &value : chatHistory) {
             QJsonObject messageObject = value.toObject();
 
-            //QString userlogin = messageObject["login"].toString();
             int message_id = messageObject["message_id"].toInt();
             int dialog_id = messageObject["dialog_id"].toInt();
 
 
             QSqlQuery query;
 
-            query.prepare("SELECT message_id, content, timestamp, sender_id, receiver_id "
+            query.prepare("SELECT message_id, content, media_url, timestamp, sender_id, receiver_id "
                           "FROM messages "
                           "WHERE dialog_id = :dialog_id AND message_id > :message_id "
                           "ORDER BY timestamp");
@@ -449,9 +453,10 @@ void ChatServer::updatingChatsProcess(QJsonObject json)
                 while (query.next()) {
                     int message_id = query.value(0).toInt();
                     QString content = query.value(1).toString();
-                    QString timestamp = query.value(2).toString();
-                    int senderId = query.value(3).toInt();
-                    int receiverId = query.value(4).toInt();
+                    QString fileUrl = query.value(2).toString();
+                    QString timestamp = query.value(3).toString();
+                    int senderId = query.value(4).toInt();
+                    int receiverId = query.value(5).toInt();
                     if(message_id + senderId + receiverId == 0){
                         continue;
                     }
@@ -481,6 +486,7 @@ void ChatServer::updatingChatsProcess(QJsonObject json)
                     messageObject["message_id"] = message_id;
                     messageObject["dialog_id"] = dialog_id;
                     messageObject["str"] = content;
+                    messageObject["fileUrl"] = fileUrl;
                     if(dialog_id == 0) {continue;}
 
                     QDateTime dateTime = QDateTime::fromString(timestamp, Qt::ISODate);
@@ -523,7 +529,7 @@ void ChatServer::updatingChatsProcess(QJsonObject json)
             while (dialogQuery.next()) {
                 int dialogId = dialogQuery.value(0).toInt();
                 if(!dialogIds.contains(dialogId)){
-                dialogIds.append(dialogId);
+                    dialogIds.append(dialogId);
                 }
             }
         } else {
@@ -535,13 +541,13 @@ void ChatServer::updatingChatsProcess(QJsonObject json)
             idsToDelete.insert(value.toInt());
         }
         dialogIds.erase(std::remove_if(dialogIds.begin(), dialogIds.end(), [&idsToDelete](int id) {
-                       return idsToDelete.contains(id);
-                   }), dialogIds.end());
+                            return idsToDelete.contains(id);
+                        }), dialogIds.end());
         qDebug() << dialogIds;
 
         for (int dialog_id : dialogIds) {
             QSqlQuery query;
-            query.prepare("SELECT message_id, content, timestamp, sender_id, receiver_id "
+            query.prepare("SELECT message_id, content, media_url timestamp, sender_id, receiver_id "
                           "FROM messages "
                           "WHERE dialog_id = :dialog_id "
                           "ORDER BY timestamp");
@@ -555,9 +561,10 @@ void ChatServer::updatingChatsProcess(QJsonObject json)
                 while (query.next()) {
                     int message_id = query.value(0).toInt();
                     QString content = query.value(1).toString();
-                    QString timestamp = query.value(2).toString();
-                    int senderId = query.value(3).toInt();
-                    int receiverId = query.value(4).toInt();
+                    QString fileUrl = query.value(2).toString();
+                    QString timestamp = query.value(3).toString();
+                    int senderId = query.value(4).toInt();
+                    int receiverId = query.value(5).toInt();
 
                     QString senderLogin;
                     QString receiverLogin;
@@ -585,6 +592,7 @@ void ChatServer::updatingChatsProcess(QJsonObject json)
                     messageObject["message_id"] = message_id;
                     messageObject["dialog_id"] = dialog_id;
                     messageObject["str"] = content;
+                    messageObject["fileUrl"] = fileUrl;
 
                     QDateTime dateTime = QDateTime::fromString(timestamp, Qt::ISODate);
                     messageObject["time"] = dateTime.toString("hh:mm");
@@ -613,10 +621,16 @@ void ChatServer::personalMessageProcess(QJsonObject json)
     QString sender_login =  json["sender_login"].toString();
     QString message =  json["message"].toString();
 
+
     int dialog_id = getOrCreateDialog(sender_id, receiver_id);
+    int message_id;
 
-    int message_id = saveMessageToDatabase(dialog_id, sender_id,receiver_id, message);
-
+    if(json.contains("fileUrl")) {
+        QString fileUrl =  json["fileUrl"].toString();
+        message_id = saveMessageToDatabase(dialog_id, sender_id,receiver_id, message, fileUrl);
+    } else {
+        message_id = saveMessageToDatabase(dialog_id, sender_id,receiver_id, message);
+    }
     sendMessageToActiveSockets(json,message_id, dialog_id);
 }
 
@@ -641,18 +655,19 @@ int ChatServer::getOrCreateDialog(int sender_id, int receiver_id)
     }
 }
 
-int ChatServer::saveMessageToDatabase(int dialogId, int senderId,int receiverId, const QString &message)
+int ChatServer::saveMessageToDatabase(int dialogId, int senderId,int receiverId, const QString &message,const QString& fileUrl)
 {
     QSqlQuery query;
-    query.prepare("INSERT INTO messages (sender_id, receiver_id, dialog_id, content) VALUES (:sender_id, :receiver_id, :dialog_id, :content)");
+    query.prepare("INSERT INTO messages (sender_id, receiver_id, dialog_id, content, media_url) VALUES (:sender_id, :receiver_id, :dialog_id, :content, :fileUrl)");
     query.bindValue(":sender_id", senderId);
     query.bindValue(":receiver_id", receiverId);
     query.bindValue(":dialog_id", dialogId);
     query.bindValue(":content", message);
+    query.bindValue(":fileUrl", fileUrl);
     if (query.exec()) {
 
     } else {
-        qDebug() << "Ошибка выполнения запроса:" << query.lastError().text();
+        qDebug() << "Error exec query:" << query.lastError().text();
     }
     return query.lastInsertId().toInt();
 }

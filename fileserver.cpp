@@ -110,8 +110,10 @@ void FileServer::makeUrlProcessing(const QJsonObject &json)
     file.close();
 
     qDebug() << "File saved as:" << uniqueFileName;
+    emit saveFileToDatabase(uniqueFileName);
 
     QJsonObject fileUrl;
+    fileUrl["flag"] = "fileUrl";
     fileUrl["fileUrl"] = uniqueFileName;
 
     QJsonDocument sendDoc(fileUrl);
@@ -128,6 +130,7 @@ void FileServer::getFileFromUrlProcessing(const QString &fileUrl)
     }
     QJsonObject fileDataJson;
     fileDataJson["flag"] = "fileData";
+    fileDataJson["fileName"] = fileUrl;
     fileDataJson["fileData"] = QString(fileData.toBase64());
     QJsonDocument doc(fileDataJson);
 

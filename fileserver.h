@@ -24,7 +24,7 @@ public:
     explicit FileServer(QObject *parent = nullptr);
 
 signals:
-    void saveFileToDatabase();
+    void saveFileToDatabase(const QString& fileUrl);
 protected:
     void incomingConnection(qintptr handle) Q_DECL_OVERRIDE;
 private slots:

@@ -35,7 +35,7 @@ protected:
     void incomingConnection(qintptr handle) Q_DECL_OVERRIDE;
 
 public slots:
-    void saveFileToDatabase();
+    void saveFileToDatabase(const QString& fileUrl);
 private slots:
     void readClient();
     void disconnectClient();
@@ -57,7 +57,7 @@ private:
     void updatingChatsProcess(QJsonObject json);
     void personalMessageProcess(QJsonObject json);
     int getOrCreateDialog(int sender_id, int receiver_id);
-    int saveMessageToDatabase(int dialogId, int senderId, int receiverId, const QString &message);
+    int saveMessageToDatabase(int dialogId, int senderId, int receiverId, const QString &message, const QString& fileUrl = "");
     void sendMessageToActiveSockets(QJsonObject json, int message_id, int dialog_id);
 
     void connectToDB();
