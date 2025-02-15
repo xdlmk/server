@@ -18,13 +18,12 @@ add_executable(Server
   fileserver.h fileserver.cpp
 )
 
-target_link_libraries(Server Qt${QT_VERSION_MAJOR}::Core Qt${QT_VERSION_MAJOR}::Network Qt${QT_VERSION_MAJOR}::Sql Qt${QT_VERSION_MAJOR}::Gui)
-
-add_custom_target(copy_images ALL
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-    ${CMAKE_SOURCE_DIR}/images ${CMAKE_BINARY_DIR}/images
+target_link_libraries(Server
+    Qt${QT_VERSION_MAJOR}::Core
+    Qt${QT_VERSION_MAJOR}::Network
+    Qt${QT_VERSION_MAJOR}::Sql
+    Qt${QT_VERSION_MAJOR}::Gui
 )
-add_dependencies(Server copy_images)
 
 include(GNUInstallDirs)
 install(TARGETS Server
