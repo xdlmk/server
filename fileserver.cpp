@@ -26,6 +26,10 @@ void FileServer::incomingConnection(qintptr handle)
 
 void FileServer::sendData(QJsonDocument &sendDoc)
 {
+    QJsonObject readJson = sendDoc.object();
+    qDebug() << "Flag FileJson to send:" << readJson["flag"].toString();
+    qDebug() << "Flag user_id to send:" << readJson["user_id"].toInt();
+    qDebug() << "Flag avatarUrl to send:" << readJson["avatar_url"].toString();
     QByteArray jsonDataOut = sendDoc.toJson(QJsonDocument::Compact);
     QByteArray data;
     data.clear();
@@ -35,6 +39,7 @@ void FileServer::sendData(QJsonDocument &sendDoc)
     out.writeRawData(jsonDataOut.data(),jsonDataOut.size());
 
     socket->write(data);
+    qInfo() << "File send";
     socket->flush();
 }
 
@@ -76,9 +81,11 @@ void FileServer::readClient()
         }
 
         QJsonObject json = doc.object();
-        if(json.contains("fileName")) {
+        if (json["flag"].toString() == "avatar") {
+            getAvatarFromServer(json);
+        } else if (json.contains("fileName")) {
             makeUrlProcessing(json);
-        } else {
+        } else if (json.contains("fileUrl")){
             getFileFromUrlProcessing(json["fileUrl"].toString());
         }
 
@@ -88,6 +95,7 @@ void FileServer::readClient()
 
 void FileServer::makeUrlProcessing(const QJsonObject &json)
 {
+    qDebug() << "makeUrlProcessing starts";
     QString fileName = json["fileName"].toString();
     QString fileExtension = json["fileExtension"].toString();
     QString fileDataBase64 = json["fileData"].toString();
@@ -122,6 +130,7 @@ void FileServer::makeUrlProcessing(const QJsonObject &json)
 
 void FileServer::getFileFromUrlProcessing(const QString &fileUrl)
 {
+    qDebug() << "getFileFromUrlProcessing starts";
     QFile file("uploads/" + fileUrl);
     QByteArray fileData;
     if(file.open(QIODevice::ReadOnly)) {
@@ -132,6 +141,31 @@ void FileServer::getFileFromUrlProcessing(const QString &fileUrl)
     fileDataJson["flag"] = "fileData";
     fileDataJson["fileName"] = fileUrl;
     fileDataJson["fileData"] = QString(fileData.toBase64());
+    QJsonDocument doc(fileDataJson);
+
+    sendData(doc);
+}
+
+void FileServer::getAvatarFromServer(const QJsonObject &json)
+{
+    qDebug() << "getAvatarFromServer starts";
+    QDir dir("avatars");
+    if (!dir.exists()) {
+        dir.mkpath(".");
+    }
+
+    QFile file("avatars/" + json["avatar_url"].toString());
+
+    QByteArray fileData;
+    if(file.open(QIODevice::ReadOnly)) {
+        fileData = file.readAll();
+        file.close();
+    }
+    QJsonObject fileDataJson;
+    fileDataJson["flag"] = "avatarData";
+    fileDataJson["user_id"] = json["user_id"].toInt();
+    fileDataJson["avatar_url"] = json["avatar_url"].toString();
+    fileDataJson["avatarData"] = QString(fileData.toBase64());
     QJsonDocument doc(fileDataJson);
 
     sendData(doc);

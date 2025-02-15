@@ -196,21 +196,6 @@ void ChatServer::SendToClient(QJsonDocument doc, const QString& senderLogin)
     }
 }
 
-QString ChatServer::convertImageToBase64(const QString &filePath)
-{
-    QFile file(filePath);
-
-    if (!file.open(QIODevice::ReadOnly)) {
-        qDebug() << "File not open:" << file.errorString();
-        return QString();
-    }
-    QByteArray imageData = file.readAll();
-    QString base64ImageData = QString::fromLatin1(imageData.toBase64());
-
-    file.close();
-    return base64ImageData;
-}
-
 QString ChatServer::hashPassword(const QString &password)
 {
     QByteArray hash = QCryptographicHash::hash(password.toUtf8(), QCryptographicHash::Sha256);
@@ -225,10 +210,7 @@ bool ChatServer::checkPassword(const QString &enteredPassword, const QString &st
 
 void ChatServer::sendJson(const QJsonDocument &sendDoc)
 {
-    QJsonObject jsonToSend = sendDoc.object();
-    jsonToSend.remove("profileImage");
-    QJsonDocument toSendDoc(jsonToSend);
-    qDebug() << "(without profileImage)JSON to send:" << toSendDoc.toJson(QJsonDocument::Indented);
+    qDebug() << "JSON to send:" << sendDoc.toJson(QJsonDocument::Indented);
     QByteArray jsonData = sendDoc.toJson(QJsonDocument::Compact);
 
     QByteArray bytes;
@@ -266,7 +248,7 @@ QJsonObject ChatServer::loginProcess(QJsonObject json)
             jsonLogin["name"] = json["login"];
             jsonLogin["password"] = json["password"];
 
-            query.prepare("SELECT avatar_url FROM users WHERE userlogin = :userlogin");
+            query.prepare("SELECT avatar_url, id_user FROM users WHERE userlogin = :userlogin");
             query.bindValue(":userlogin", login);
             if (!query.exec()) {
                 qDebug() << "Ошибка выполнения для получения изображения:" << query.lastError().text();
@@ -275,18 +257,9 @@ QJsonObject ChatServer::loginProcess(QJsonObject json)
                 qDebug() << "Нет результатов для данного запроса";
             }
             QString avatar_url = query.value(0).toString();
+            int id = query.value(1).toInt();
 
-            jsonLogin["profileImage"] = convertImageToBase64(avatar_url);
-
-            query.prepare("SELECT id_user FROM users WHERE userlogin = :userlogin");
-            query.bindValue(":userlogin", login);
-            if (!query.exec()) {
-                qDebug() << "Ошибка выполнения для получения изображения:" << query.lastError().text();
-            }
-            if (!query.next()) {
-                qDebug() << "Нет результатов для данного запроса";
-            }
-            int id = query.value(0).toInt();
+            jsonLogin["avatar_url"] = avatar_url;
             jsonLogin["user_id"] = id;
 
             clients.insert(login, socket);

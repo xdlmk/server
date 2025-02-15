@@ -32,6 +32,7 @@ private slots:
     void readClient();
     void makeUrlProcessing(const QJsonObject& json);
     void getFileFromUrlProcessing(const QString& fileUrl);
+    void getAvatarFromServer(const QJsonObject &json);
 
 private:
     QTcpSocket* socket;
