@@ -3,12 +3,9 @@
 ChatServer::ChatServer(QObject *parent)
     : QTcpServer{parent}
 {
-    if(!this->listen(QHostAddress::Any,2020))
-    {
+    if(!this->listen(QHostAddress::Any,2020)) {
         qInfo() <<"Unable to start the server: " << this->errorString();
-    }
-    else
-    {
+    } else {
         qInfo() << "Server started on host " << this->serverAddress().toString() <<" port " <<this->serverPort();
         connectToDB();
     }
@@ -17,127 +14,88 @@ ChatServer::ChatServer(QObject *parent)
 void ChatServer::incomingConnection(qintptr handle)
 {
     socket = new QTcpSocket(this);
-    if(socket->setSocketDescriptor(handle))
-    {
+    if(socket->setSocketDescriptor(handle)) {
         connect(socket,&QTcpSocket::readyRead,this,&ChatServer::readClient);
         connect(socket,&QTcpSocket::disconnected,this,&ChatServer::disconnectClient);
         qDebug() << "Client connect: " << handle;
-    }
-    else
-    {
+    } else {
         delete socket;
+    }
+}
+
+void ChatServer::saveFileToDatabase(const QString &fileUrl)
+{
+    QSqlQuery query;
+    query.prepare("INSERT INTO `files` (`file_url`) VALUES (:fileUrl);");
+    query.bindValue(":fileUrl", fileUrl);
+    if (!query.exec()) {
+        qDebug() << "Error execute sql query:" << query.lastError().text();
     }
 }
 
 void ChatServer::readClient()
 {
-    qInfo() << "Get message!";
     socket = qobject_cast<QTcpSocket*>(sender());
     QDataStream in(socket);
     in.setVersion(QDataStream::Qt_6_7);
 
     static quint32 blockSize = 0;
+    if (blockSize == 0 && socket->bytesAvailable() < sizeof(quint32)) return;
+    if (blockSize == 0) in >> blockSize;
+    if (socket->bytesAvailable() < blockSize) return;
 
-    if(in.status()== QDataStream::Ok)
-    {
-        if (blockSize == 0) {
-            if (socket->bytesAvailable() < sizeof(quint32))
-            {
-                return;
-            }
-            in >> blockSize;
-            qDebug() << "Block size:" << blockSize;
-        }
+    QByteArray jsonData;
+    jsonData.resize(blockSize);
+    in.readRawData(jsonData.data(), blockSize);
 
-        if (socket->bytesAvailable() < blockSize)
-        {
-            return;
-        }
+    QJsonDocument doc = QJsonDocument::fromJson(jsonData);
+    if (doc.isNull()) {
+        qDebug() << "Invalid JSON-message received";
+        blockSize = 0;
+        return;
+    }
 
-        QByteArray jsonData;
-        jsonData.resize(blockSize);
-        in.readRawData(jsonData.data(), blockSize);
+    QJsonObject json = doc.object();
+    QString flag = json["flag"].toString();
 
-        QJsonDocument doc = QJsonDocument::fromJson(jsonData);
+    qDebug() << "Next chech flags";
+    if(flag == "login"){
+        QJsonDocument sendDoc(loginProcess(json));
+        sendJson(sendDoc);
+    }
+    else if (flag == "message") {
+        QString str1 = json["str"].toString();
+        QString login = json["login"].toString();
+        SendToClient(doc,login);
+    }
+    else if(flag == "reg") {
+        QJsonDocument sendDoc(regProcess(json));
+        sendJson(sendDoc);
+    }
+    else if(flag == "logout") {
+        QTcpSocket *clientSocket = qobject_cast<QTcpSocket*>(sender());
+        QMultiMap<QString, QTcpSocket*>::iterator it;
 
-        if (doc.isNull()) {
-            qDebug() << "Error with JSON doc check, doc is null";
-            blockSize = 0;
-            return;
-        }
+        for (it = clients.begin(); it != clients.end(); ++it) {
+            if (it.value() == clientSocket) {
+                qDebug() << clients;
 
-        QJsonObject json = doc.object();
-        QString flag = json["flag"].toString();
-
-        qDebug() << "Next chech flags";
-        if(flag == "login")
-        {
-            qDebug() << "Flag == login";
-
-            QJsonDocument sendDoc(loginProcess(json));
-            sendJson(sendDoc);
-        }
-        else if (flag == "message")
-        {
-            qDebug() << "Flag == message ";
-
-            QString str1 = json["str"].toString();
-            QString login = json["login"].toString();
-            qDebug() << "Message:" << str1 << " from " << login;
-            SendToClient(doc,login);
-        }
-        else if(flag == "reg")
-        {
-            qDebug() << "Flag == reg";
-
-            QJsonDocument sendDoc(regProcess(json));
-            sendJson(sendDoc);
-        }
-        else if(flag == "logout")
-        {
-            qDebug() << "Flag == logout";
-            QTcpSocket *clientSocket = qobject_cast<QTcpSocket*>(sender());
-            qDebug()<< "Client logout";
-            qDebug() << clients;
-
-            QMultiMap<QString, QTcpSocket*>::iterator it;
-
-            for (it = clients.begin(); it != clients.end(); ++it) {
-                if (it.value() == clientSocket) {
-                    qDebug() << clients;
-
-                    QTcpSocket *socketValue = it.value();
-                    it = clients.erase(it);
-                    qDebug() << clients;
-                    break;
-                }
+                QTcpSocket *socketValue = it.value();
+                it = clients.erase(it);
+                qDebug() << clients;
+                break;
             }
         }
-        else if(flag == "search")
-        {
-            qDebug() << "Flag == search";
-            QJsonDocument sendDoc(searchProcess(json));
-            sendJson(sendDoc);
-        }
-        else if(flag == "personal_message")
-        {
-            qDebug() << "Flag == personal_message";
-
-            personalMessageProcess(json);
-        }
-        else if(flag == "updating_chats")
-        {
-            qDebug() << "Flag == updating_chats";
-
-            updatingChatsProcess(json);
-        }
-        else if(flag == "edit")
-        {
-            qDebug() << "Flag == edit";
-
-            QJsonDocument sendDoc(editProfileProcess(json));
-            sendJson(sendDoc);
-        }
+    }
+    else if(flag == "search") {
+        QJsonDocument sendDoc(searchProcess(json));
+        sendJson(sendDoc);
+    }
+    else if(flag == "personal_message") personalMessageProcess(json);
+    else if(flag == "updating_chats") updatingChatsProcess(json);
+    else if(flag == "edit") {
+        QJsonDocument sendDoc(editProfileProcess(json));
+        sendJson(sendDoc);
     }
     blockSize = 0;
 }
@@ -153,7 +111,7 @@ void ChatServer::SendToClient(QJsonDocument doc, const QString& senderLogin)
 
     for(auto it = clients.constBegin(); it != clients.constEnd(); ++it)
     {
-        qDebug()<< it.key() << "   5" << senderLogin;
+        qDebug()<< it.key() << " << >> " << senderLogin;
         if(it.key()!= senderLogin)
         {
             qDebug() << "works if";
@@ -178,27 +136,10 @@ void ChatServer::SendToClient(QJsonDocument doc, const QString& senderLogin)
             outg<< quint32(jsonDataOutg.size());
             outg.writeRawData(jsonDataOutg.data(),jsonDataOutg.size());
 
-            //outg << docToOut.toJson();
-
             it.value()->write(dataToOut);
             it.value()->flush();
         }
     }
-}
-
-QString ChatServer::convertImageToBase64(const QString &filePath)
-{
-    QFile file(filePath);
-
-    if (!file.open(QIODevice::ReadOnly)) {
-        qDebug() << "File not open:" << file.errorString();
-        return QString();
-    }
-    QByteArray imageData = file.readAll();
-    QString base64ImageData = QString::fromLatin1(imageData.toBase64());
-
-    file.close();
-    return base64ImageData;
 }
 
 QString ChatServer::hashPassword(const QString &password)
@@ -215,10 +156,7 @@ bool ChatServer::checkPassword(const QString &enteredPassword, const QString &st
 
 void ChatServer::sendJson(const QJsonDocument &sendDoc)
 {
-    QJsonObject jsonToSend = sendDoc.object();
-    jsonToSend.remove("profileImage");
-    QJsonDocument toSendDoc(jsonToSend);
-    qDebug() << "(without profileImage)JSON to send:" << toSendDoc.toJson(QJsonDocument::Indented);
+    qDebug() << "JSON to send:" << sendDoc.toJson(QJsonDocument::Indented);
     QByteArray jsonData = sendDoc.toJson(QJsonDocument::Compact);
 
     QByteArray bytes;
@@ -256,7 +194,7 @@ QJsonObject ChatServer::loginProcess(QJsonObject json)
             jsonLogin["name"] = json["login"];
             jsonLogin["password"] = json["password"];
 
-            query.prepare("SELECT avatar_url FROM users WHERE userlogin = :userlogin");
+            query.prepare("SELECT avatar_url, id_user FROM users WHERE userlogin = :userlogin");
             query.bindValue(":userlogin", login);
             if (!query.exec()) {
                 qDebug() << "Ошибка выполнения для получения изображения:" << query.lastError().text();
@@ -265,18 +203,9 @@ QJsonObject ChatServer::loginProcess(QJsonObject json)
                 qDebug() << "Нет результатов для данного запроса";
             }
             QString avatar_url = query.value(0).toString();
+            int id = query.value(1).toInt();
 
-            jsonLogin["profileImage"] = convertImageToBase64(avatar_url);
-
-            query.prepare("SELECT id_user FROM users WHERE userlogin = :userlogin");
-            query.bindValue(":userlogin", login);
-            if (!query.exec()) {
-                qDebug() << "Ошибка выполнения для получения изображения:" << query.lastError().text();
-            }
-            if (!query.next()) {
-                qDebug() << "Нет результатов для данного запроса";
-            }
-            int id = query.value(0).toInt();
+            jsonLogin["avatar_url"] = avatar_url;
             jsonLogin["user_id"] = id;
 
             clients.insert(login, socket);
@@ -315,12 +244,9 @@ QJsonObject ChatServer::regProcess(QJsonObject json)
             qDebug() << "Exec = ok";
             jsonReg["success"] = "ok";
 
-            QString default_avatar_url = "images/defaultAvatar.png";
-
-            query.prepare("INSERT INTO `users` (`username`, `password_hash`, `userlogin`, `avatar_url`) VALUES (:username, :password_hash, :username, :avatar_url);");
+            query.prepare("INSERT INTO `users` (`username`, `password_hash`, `userlogin`) VALUES (:username, :password_hash, :username);");
             query.bindValue(":username", login);
             query.bindValue(":password_hash",password);
-            query.bindValue(":avatar_url",default_avatar_url);
             jsonReg["name"] = json["login"];
             jsonReg["password"] = json["password"];
             if (!query.exec()) {
@@ -339,17 +265,19 @@ QJsonObject ChatServer::searchProcess(QJsonObject json)
 
     QJsonArray jsonArray;
     QSqlQuery query;
-    query.prepare("SELECT id_user, userlogin FROM users WHERE userlogin LIKE :keyword");
+    query.prepare("SELECT id_user, userlogin, avatar_url FROM users WHERE userlogin LIKE :keyword");
     query.bindValue(":keyword", "%" + searchable + "%");
     if (query.exec()) {
         while (query.next()) {
 
             int id = query.value(0).toInt();
             QString userlogin = query.value(1).toString();
+            QString avatar_url = query.value(2).toString();
 
             QJsonObject userObject;
             userObject["id"] = id;
             userObject["userlogin"] = userlogin;
+            userObject["avatar_url"] = avatar_url;
 
             jsonArray.append(userObject);
         }
@@ -388,12 +316,24 @@ QJsonObject ChatServer::editProfileProcess(QJsonObject dataEditProfile)
         query.bindValue(":id_user", user_id);
     }
 
-    if (!query.exec()) {
-        qDebug() << "Ошибка выполнения запроса:" << query.lastError().text();
-    }
-
     QJsonObject editResults;
     editResults["flag"] = "edit";
+
+    if (!query.exec()) {
+        qDebug() << "Query execution error:" << query.lastError().text();
+        qDebug() << "Query execution error code:" << query.lastError().nativeErrorCode();
+
+        if (query.lastError().text().contains("Duplicate entry") or query.lastError().nativeErrorCode() == "1062") {
+            qDebug() << "Error: Violation of uniqueness";
+            editResults["status"] = "poor";
+            editResults["error"] = "Unique error";
+            return editResults;
+        }
+        editResults["status"] = "poor";
+        editResults["error"] = "Unknown error";
+        return editResults;
+    }
+    editResults["status"] = "ok";
     editResults["editable"] = editable;
     editResults["editInformation"] =  editInformation;
 
@@ -410,14 +350,13 @@ void ChatServer::updatingChatsProcess(QJsonObject json)
         for (const QJsonValue &value : chatHistory) {
             QJsonObject messageObject = value.toObject();
 
-            //QString userlogin = messageObject["login"].toString();
             int message_id = messageObject["message_id"].toInt();
             int dialog_id = messageObject["dialog_id"].toInt();
 
 
             QSqlQuery query;
 
-            query.prepare("SELECT message_id, content, timestamp, sender_id, receiver_id "
+            query.prepare("SELECT message_id, content, media_url, timestamp, sender_id, receiver_id "
                           "FROM messages "
                           "WHERE dialog_id = :dialog_id AND message_id > :message_id "
                           "ORDER BY timestamp");
@@ -432,38 +371,46 @@ void ChatServer::updatingChatsProcess(QJsonObject json)
                 while (query.next()) {
                     int message_id = query.value(0).toInt();
                     QString content = query.value(1).toString();
-                    QString timestamp = query.value(2).toString();
-                    int senderId = query.value(3).toInt();
-                    int receiverId = query.value(4).toInt();
+                    QString fileUrl = query.value(2).toString();
+                    QString timestamp = query.value(3).toString();
+                    int senderId = query.value(4).toInt();
+                    int receiverId = query.value(5).toInt();
                     if(message_id + senderId + receiverId == 0){
                         continue;
                     }
 
                     QString senderLogin;
                     QString receiverLogin;
+                    QString sender_avatar_url;
+                    QString receiver_avatar_url;
 
                     QSqlQuery senderQuery;
-                    senderQuery.prepare("SELECT userlogin FROM users WHERE id_user = :sender_id");
+                    senderQuery.prepare("SELECT userlogin, avatar_url FROM users WHERE id_user = :sender_id");
                     senderQuery.bindValue(":sender_id", senderId);
                     if (senderQuery.exec() && senderQuery.next()) {
                         senderLogin = senderQuery.value(0).toString();
+                        sender_avatar_url = senderQuery.value(1).toString();
                     }
                     QSqlQuery receiverQuery;
-                    receiverQuery.prepare("SELECT userlogin FROM users WHERE id_user = :receiver_id");
+                    receiverQuery.prepare("SELECT userlogin, avatar_url FROM users WHERE id_user = :receiver_id");
                     receiverQuery.bindValue(":receiver_id", receiverId);
                     if (receiverQuery.exec() && receiverQuery.next()) {
                         receiverLogin = receiverQuery.value(0).toString();
+                        receiver_avatar_url = receiverQuery.value(1).toString();
                     }
 
                     QJsonObject messageObject;
                     messageObject["FullDate"] = timestamp;
                     messageObject["receiver_login"] = receiverLogin;
+                    messageObject["receiver_avatar_url"] = receiver_avatar_url;
                     messageObject["sender_login"] = senderLogin;
+                    messageObject["sender_avatar_url"] = sender_avatar_url;
                     messageObject["receiver_id"] = receiverId;
                     messageObject["sender_id"] = senderId;
                     messageObject["message_id"] = message_id;
                     messageObject["dialog_id"] = dialog_id;
                     messageObject["str"] = content;
+                    messageObject["fileUrl"] = fileUrl;
                     if(dialog_id == 0) {continue;}
 
                     QDateTime dateTime = QDateTime::fromString(timestamp, Qt::ISODate);
@@ -506,7 +453,7 @@ void ChatServer::updatingChatsProcess(QJsonObject json)
             while (dialogQuery.next()) {
                 int dialogId = dialogQuery.value(0).toInt();
                 if(!dialogIds.contains(dialogId)){
-                dialogIds.append(dialogId);
+                    dialogIds.append(dialogId);
                 }
             }
         } else {
@@ -518,13 +465,13 @@ void ChatServer::updatingChatsProcess(QJsonObject json)
             idsToDelete.insert(value.toInt());
         }
         dialogIds.erase(std::remove_if(dialogIds.begin(), dialogIds.end(), [&idsToDelete](int id) {
-                       return idsToDelete.contains(id);
-                   }), dialogIds.end());
+                            return idsToDelete.contains(id);
+                        }), dialogIds.end());
         qDebug() << dialogIds;
 
         for (int dialog_id : dialogIds) {
             QSqlQuery query;
-            query.prepare("SELECT message_id, content, timestamp, sender_id, receiver_id "
+            query.prepare("SELECT message_id, content, media_url timestamp, sender_id, receiver_id "
                           "FROM messages "
                           "WHERE dialog_id = :dialog_id "
                           "ORDER BY timestamp");
@@ -538,36 +485,43 @@ void ChatServer::updatingChatsProcess(QJsonObject json)
                 while (query.next()) {
                     int message_id = query.value(0).toInt();
                     QString content = query.value(1).toString();
-                    QString timestamp = query.value(2).toString();
-                    int senderId = query.value(3).toInt();
-                    int receiverId = query.value(4).toInt();
+                    QString fileUrl = query.value(2).toString();
+                    QString timestamp = query.value(3).toString();
+                    int senderId = query.value(4).toInt();
+                    int receiverId = query.value(5).toInt();
 
                     QString senderLogin;
                     QString receiverLogin;
+                    QString sender_avatar_url;
+                    QString receiver_avatar_url;
 
                     QSqlQuery senderQuery;
-                    senderQuery.prepare("SELECT userlogin FROM users WHERE id_user = :sender_id");
+                    senderQuery.prepare("SELECT userlogin, avatar_url FROM users WHERE id_user = :sender_id");
                     senderQuery.bindValue(":sender_id", senderId);
                     if (senderQuery.exec() && senderQuery.next()) {
                         senderLogin = senderQuery.value(0).toString();
+                        sender_avatar_url = senderQuery.value(1).toString();
                     }
-
                     QSqlQuery receiverQuery;
-                    receiverQuery.prepare("SELECT userlogin FROM users WHERE id_user = :receiver_id");
+                    receiverQuery.prepare("SELECT userlogin, avatar_url FROM users WHERE id_user = :receiver_id");
                     receiverQuery.bindValue(":receiver_id", receiverId);
                     if (receiverQuery.exec() && receiverQuery.next()) {
                         receiverLogin = receiverQuery.value(0).toString();
+                        receiver_avatar_url = receiverQuery.value(1).toString();
                     }
 
                     QJsonObject messageObject;
                     messageObject["FullDate"] = timestamp;
                     messageObject["receiver_login"] = receiverLogin;
+                    messageObject["receiver_avatar_url"] = receiver_avatar_url;
                     messageObject["sender_login"] = senderLogin;
+                    messageObject["sender_avatar_url"] = sender_avatar_url;
                     messageObject["receiver_id"] = receiverId;
                     messageObject["sender_id"] = senderId;
                     messageObject["message_id"] = message_id;
                     messageObject["dialog_id"] = dialog_id;
                     messageObject["str"] = content;
+                    messageObject["fileUrl"] = fileUrl;
 
                     QDateTime dateTime = QDateTime::fromString(timestamp, Qt::ISODate);
                     messageObject["time"] = dateTime.toString("hh:mm");
@@ -596,13 +550,36 @@ void ChatServer::personalMessageProcess(QJsonObject json)
     QString sender_login =  json["sender_login"].toString();
     QString message =  json["message"].toString();
 
-    //qDebug() << "personalMessageProcess " << "sender_id: " << sender_id << " receiver_id " << receiver_id;
+
+    QString receiver_avatar_url = getAvatarUrl(receiver_login);
+    QString sender_avatar_url = getAvatarUrl(sender_login);
+    json["receiver_avatar_url"] = receiver_avatar_url;
+    json["sender_avatar_url"] = sender_avatar_url;
 
     int dialog_id = getOrCreateDialog(sender_id, receiver_id);
+    int message_id;
 
-    int message_id = saveMessageToDatabase(dialog_id, sender_id,receiver_id, message);
-
+    if(json.contains("fileUrl")) {
+        QString fileUrl =  json["fileUrl"].toString();
+        message_id = saveMessageToDatabase(dialog_id, sender_id,receiver_id, message, fileUrl);
+    } else {
+        message_id = saveMessageToDatabase(dialog_id, sender_id,receiver_id, message);
+    }
     sendMessageToActiveSockets(json,message_id, dialog_id);
+}
+
+QString ChatServer::getAvatarUrl(const QString &userlogin)
+{
+    qDebug() << "getAvatarUrl starts";
+    QSqlQuery query;
+    query.prepare("SELECT avatar_url FROM users WHERE userlogin = :userlogin");
+    query.bindValue(":userlogin", userlogin);
+    if (query.exec() && query.next()) {
+        return query.value(0).toString();
+    } else {
+        qDebug() << "query getAvatarUrl error: " << query.lastError().text();
+    }
+    return "";
 }
 
 int ChatServer::getOrCreateDialog(int sender_id, int receiver_id)
@@ -626,18 +603,19 @@ int ChatServer::getOrCreateDialog(int sender_id, int receiver_id)
     }
 }
 
-int ChatServer::saveMessageToDatabase(int dialogId, int senderId,int receiverId, const QString &message)
+int ChatServer::saveMessageToDatabase(int dialogId, int senderId,int receiverId, const QString &message,const QString& fileUrl)
 {
     QSqlQuery query;
-    query.prepare("INSERT INTO messages (sender_id, receiver_id, dialog_id, content) VALUES (:sender_id, :receiver_id, :dialog_id, :content)");
+    query.prepare("INSERT INTO messages (sender_id, receiver_id, dialog_id, content, media_url) VALUES (:sender_id, :receiver_id, :dialog_id, :content, :fileUrl)");
     query.bindValue(":sender_id", senderId);
     query.bindValue(":receiver_id", receiverId);
     query.bindValue(":dialog_id", dialogId);
     query.bindValue(":content", message);
+    query.bindValue(":fileUrl", fileUrl);
     if (query.exec()) {
 
     } else {
-        qDebug() << "Ошибка выполнения запроса:" << query.lastError().text();
+        qDebug() << "Error exec query:" << query.lastError().text();
     }
     return query.lastInsertId().toInt();
 }
@@ -653,7 +631,9 @@ void ChatServer::sendMessageToActiveSockets(QJsonObject json, int message_id, in
     messageJson["message"] = json["message"];
     messageJson["dialog_id"] = dialog_id;
     messageJson["sender_login"] = json["sender_login"];
+    messageJson["sender_avatar_url"] = json["sender_avatar_url"];
     messageJson["sender_id"] = json["sender_id"];
+    messageJson["fileUrl"] = json["fileUrl"];
     messageJson["time"] = QDateTime::currentDateTime().toString("HH:mm");
 
     QJsonDocument doc(messageJson);
@@ -673,9 +653,11 @@ void ChatServer::sendMessageToActiveSockets(QJsonObject json, int message_id, in
 
         int sender_id = jsonToOut["sender_id"].toInt();
 
+        jsonToOut.remove("sender_avatar_url");
         jsonToOut.remove("sender_id");
         jsonToOut["receiver_login"] = json["receiver_login"];
         jsonToOut["receiver_id"] = json["receiver_id"];
+        jsonToOut["receiver_avatar_url"] = json["receiver_avatar_url"];
 
         int receiver_id = jsonToOut["receiver_id"].toInt();
 

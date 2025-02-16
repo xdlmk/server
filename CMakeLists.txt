@@ -15,15 +15,15 @@ find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Network Sql Gui)
 add_executable(Server
   main.cpp
   chatserver.h chatserver.cpp
+  fileserver.h fileserver.cpp
 )
 
-target_link_libraries(Server Qt${QT_VERSION_MAJOR}::Core Qt${QT_VERSION_MAJOR}::Network Qt${QT_VERSION_MAJOR}::Sql Qt${QT_VERSION_MAJOR}::Gui)
-
-add_custom_target(copy_images ALL
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-    ${CMAKE_SOURCE_DIR}/images ${CMAKE_BINARY_DIR}/images
+target_link_libraries(Server
+    Qt${QT_VERSION_MAJOR}::Core
+    Qt${QT_VERSION_MAJOR}::Network
+    Qt${QT_VERSION_MAJOR}::Sql
+    Qt${QT_VERSION_MAJOR}::Gui
 )
-add_dependencies(Server copy_images)
 
 include(GNUInstallDirs)
 install(TARGETS Server
