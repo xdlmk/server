@@ -33,6 +33,17 @@ void ChatServer::saveFileToDatabase(const QString &fileUrl)
     }
 }
 
+void ChatServer::setAvatarInDatabase(const QString &avatarUrl, const int &user_id)
+{
+    QSqlQuery query;
+    query.prepare("UPDATE users SET avatar_url = :avatar_url WHERE id_user = :id_user;");
+    query.bindValue(":id_user", user_id);
+    query.bindValue(":avatar_url", avatarUrl);
+    if (!query.exec()) {
+        qDebug() << "Error execute sql query to setAvatarInDatabase:" << query.lastError().text();
+    }
+}
+
 void ChatServer::readClient()
 {
     socket = qobject_cast<QTcpSocket*>(sender());

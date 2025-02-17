@@ -36,6 +36,7 @@ protected:
 
 public slots:
     void saveFileToDatabase(const QString& fileUrl);
+    void setAvatarInDatabase(const QString& avatarUrl, const int& user_id);
 private slots:
     void readClient();
     void disconnectClient();

@@ -25,12 +25,14 @@ public:
 
 signals:
     void saveFileToDatabase(const QString& fileUrl);
+    void setAvatarInDatabase(const QString& avatarUrl, const int& user_id);
 protected:
     void incomingConnection(qintptr handle) Q_DECL_OVERRIDE;
 private slots:
     void sendData(QJsonDocument& sendDoc);
     void readClient();
-    void makeUrlProcessing(const QJsonObject& json);
+    void makeAvatarUrlProcessing(const QJsonObject& json);
+    QString makeUrlProcessing(const QJsonObject& json);
     void getFileFromUrlProcessing(const QString& fileUrl);
     void getAvatarFromServer(const QJsonObject &json);
 

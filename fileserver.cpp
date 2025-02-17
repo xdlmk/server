@@ -38,8 +38,7 @@ void FileServer::sendData(QJsonDocument &sendDoc)
     out<<quint32(jsonDataOut.size());
     out.writeRawData(jsonDataOut.data(),jsonDataOut.size());
 
-    socket->write(data);
-    qInfo() << "File send";
+    if(socket->write(data)) qInfo() << "File send";
     socket->flush();
 }
 
@@ -81,19 +80,37 @@ void FileServer::readClient()
         }
 
         QJsonObject json = doc.object();
-        if (json["flag"].toString() == "avatar") {
-            getAvatarFromServer(json);
-        } else if (json.contains("fileName")) {
-            makeUrlProcessing(json);
-        } else if (json.contains("fileUrl")){
-            getFileFromUrlProcessing(json["fileUrl"].toString());
+        if (json["flag"].toString() == "avatarUrl") getAvatarFromServer(json);
+        else if (json["flag"].toString() == "newAvatarData") makeAvatarUrlProcessing(json);
+        else if (json["flag"].toString() == "file") {
+            QString fileUrl = makeUrlProcessing(json);
+            QJsonObject fileUrlJson;
+            fileUrlJson["flag"] = "fileUrl";
+            fileUrlJson["fileUrl"] = fileUrl;
+            QJsonDocument sendDoc(fileUrlJson);
+            sendData(sendDoc);
         }
-
+        else if (json["flag"].toString() == "fileUrl") getFileFromUrlProcessing(json["fileUrl"].toString());
     }
     blockSize = 0;
 }
 
-void FileServer::makeUrlProcessing(const QJsonObject &json)
+void FileServer::makeAvatarUrlProcessing(const QJsonObject &json)
+{
+    QString avatarUrl = makeUrlProcessing(json);
+    int user_id = json["user_id"].toInt();
+    emit setAvatarInDatabase(avatarUrl,user_id);
+
+    QJsonObject avatarUrlJson;
+    avatarUrlJson["flag"] = "avatarUrl";
+    avatarUrlJson["avatar_url"] = avatarUrl;
+    avatarUrlJson["user_id"] = user_id;
+
+    QJsonDocument sendDoc(avatarUrlJson);
+    sendData(sendDoc);
+}
+
+QString FileServer::makeUrlProcessing(const QJsonObject &json)
 {
     qDebug() << "makeUrlProcessing starts";
     QString fileName = json["fileName"].toString();
@@ -111,7 +128,7 @@ void FileServer::makeUrlProcessing(const QJsonObject &json)
     QFile file("uploads/" + uniqueFileName);
     if (!file.open(QIODevice::WriteOnly)) {
         qWarning() << "Failed to save file:" << uniqueFileName;
-        return;
+        return "";
     }
 
     file.write(fileData);
@@ -121,11 +138,7 @@ void FileServer::makeUrlProcessing(const QJsonObject &json)
     emit saveFileToDatabase(uniqueFileName);
 
     QJsonObject fileUrl;
-    fileUrl["flag"] = "fileUrl";
-    fileUrl["fileUrl"] = uniqueFileName;
-
-    QJsonDocument sendDoc(fileUrl);
-    sendData(sendDoc);
+    return uniqueFileName;
 }
 
 void FileServer::getFileFromUrlProcessing(const QString &fileUrl)
@@ -149,12 +162,12 @@ void FileServer::getFileFromUrlProcessing(const QString &fileUrl)
 void FileServer::getAvatarFromServer(const QJsonObject &json)
 {
     qDebug() << "getAvatarFromServer starts";
-    QDir dir("avatars");
+    QDir dir("uploads");
     if (!dir.exists()) {
         dir.mkpath(".");
     }
 
-    QFile file("avatars/" + json["avatar_url"].toString());
+    QFile file("uploads/" + json["avatar_url"].toString());
 
     QByteArray fileData;
     if(file.open(QIODevice::ReadOnly)) {
