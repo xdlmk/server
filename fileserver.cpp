@@ -90,7 +90,8 @@ void FileServer::readClient()
             QJsonDocument sendDoc(fileUrlJson);
             sendData(sendDoc);
         }
-        else if (json["flag"].toString() == "fileUrl") getFileFromUrlProcessing(json["fileUrl"].toString());
+        else if (json["flag"].toString() == "fileUrl") getFileFromUrlProcessing(json["fileUrl"].toString(),"fileData");
+        else if (json["flag"].toString() == "voiceFileUrl") getFileFromUrlProcessing(json["fileUrl"].toString(),"voiceFileData");
     }
     blockSize = 0;
 }
@@ -141,7 +142,7 @@ QString FileServer::makeUrlProcessing(const QJsonObject &json)
     return uniqueFileName;
 }
 
-void FileServer::getFileFromUrlProcessing(const QString &fileUrl)
+void FileServer::getFileFromUrlProcessing(const QString &fileUrl, const QString &flag)
 {
     qDebug() << "getFileFromUrlProcessing starts";
     QFile file("uploads/" + fileUrl);
@@ -151,7 +152,7 @@ void FileServer::getFileFromUrlProcessing(const QString &fileUrl)
         file.close();
     }
     QJsonObject fileDataJson;
-    fileDataJson["flag"] = "fileData";
+    fileDataJson["flag"] = flag;
     fileDataJson["fileName"] = fileUrl;
     fileDataJson["fileData"] = QString(fileData.toBase64());
     QJsonDocument doc(fileDataJson);
