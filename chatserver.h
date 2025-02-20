@@ -37,6 +37,7 @@ protected:
 public slots:
     void saveFileToDatabase(const QString& fileUrl);
     void setAvatarInDatabase(const QString& avatarUrl, const int& user_id);
+    void personalMessageProcess(QJsonObject json);
 private slots:
     void readClient();
     void disconnectClient();
@@ -54,7 +55,6 @@ private:
     QJsonObject editProfileProcess(QJsonObject dataEditProfile);
 
     void updatingChatsProcess(QJsonObject json);
-    void personalMessageProcess(QJsonObject json);
 
     QString getAvatarUrl(const QString& userlogin);
     int getOrCreateDialog(int sender_id, int receiver_id);

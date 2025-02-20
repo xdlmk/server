@@ -92,6 +92,7 @@ void FileServer::readClient()
         }
         else if (json["flag"].toString() == "fileUrl") getFileFromUrlProcessing(json["fileUrl"].toString(),"fileData");
         else if (json["flag"].toString() == "voiceFileUrl") getFileFromUrlProcessing(json["fileUrl"].toString(),"voiceFileData");
+        else if(json["flag"].toString() == "voice_message") voiceMessageProcessing(json);
     }
     blockSize = 0;
 }
@@ -125,7 +126,6 @@ QString FileServer::makeUrlProcessing(const QJsonObject &json)
     if (!dir.exists()) {
         dir.mkpath(".");
     }
-
     QFile file("uploads/" + uniqueFileName);
     if (!file.open(QIODevice::WriteOnly)) {
         qWarning() << "Failed to save file:" << uniqueFileName;
@@ -145,7 +145,11 @@ QString FileServer::makeUrlProcessing(const QJsonObject &json)
 void FileServer::getFileFromUrlProcessing(const QString &fileUrl, const QString &flag)
 {
     qDebug() << "getFileFromUrlProcessing starts";
-    QFile file("uploads/" + fileUrl);
+    QString folder;
+    if(flag == "fileData") folder = "uploads";
+    else if(flag == "voiceFileData") folder = "voice_messages";
+
+    QFile file(folder + "/" + fileUrl);
     QByteArray fileData;
     if(file.open(QIODevice::ReadOnly)) {
         fileData = file.readAll();
@@ -183,4 +187,36 @@ void FileServer::getAvatarFromServer(const QJsonObject &json)
     QJsonDocument doc(fileDataJson);
 
     sendData(doc);
+}
+
+void FileServer::voiceMessageProcessing(QJsonObject &voiceJson)
+{
+    qDebug() << "voiceMessageProcessing starts";
+    QString fileName = voiceJson["fileName"].toString();
+    QString fileExtension = voiceJson["fileExtension"].toString();
+    QString fileDataBase64 = voiceJson["fileData"].toString();
+    QByteArray fileData = QByteArray::fromBase64(fileDataBase64.toUtf8());
+
+    QString uniqueFileName = QUuid::createUuid().toString(QUuid::WithoutBraces) + "_" + fileName + "." + fileExtension;
+
+    QDir dir("voice_messages");
+    if (!dir.exists()) {
+        dir.mkpath(".");
+    }
+
+    QFile file("voice_messages/" + uniqueFileName);
+    if (!file.open(QIODevice::WriteOnly)) {
+        qWarning() << "Failed to save file:" << uniqueFileName;
+    }
+    file.write(fileData);
+    file.close();
+    voiceJson.remove("fileData");
+    voiceJson.remove("fileName");
+    voiceJson.remove("fileExtension");
+    voiceJson["fileUrl"] = uniqueFileName;
+    voiceJson["message"] = "";
+
+    emit saveFileToDatabase(uniqueFileName);
+    emit sendVoiceMessage(voiceJson);
+
 }

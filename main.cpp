@@ -10,5 +10,6 @@ int main(int argc, char *argv[])
 
     QObject::connect(&fileServer, &FileServer::saveFileToDatabase, &server, &ChatServer::saveFileToDatabase);
     QObject::connect(&fileServer, &FileServer::setAvatarInDatabase, &server, &ChatServer::setAvatarInDatabase);
+    QObject::connect(&fileServer, &FileServer::sendVoiceMessage, &server, &ChatServer::personalMessageProcess);
     return a.exec();
 }

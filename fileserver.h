@@ -26,6 +26,7 @@ public:
 signals:
     void saveFileToDatabase(const QString& fileUrl);
     void setAvatarInDatabase(const QString& avatarUrl, const int& user_id);
+    void sendVoiceMessage(QJsonObject voiceJson);
 protected:
     void incomingConnection(qintptr handle) Q_DECL_OVERRIDE;
 private slots:
@@ -35,6 +36,7 @@ private slots:
     QString makeUrlProcessing(const QJsonObject& json);
     void getFileFromUrlProcessing(const QString &fileUrl, const QString &flag);
     void getAvatarFromServer(const QJsonObject &json);
+    void voiceMessageProcessing(QJsonObject &voiceJson);
 
 private:
     QTcpSocket* socket;
