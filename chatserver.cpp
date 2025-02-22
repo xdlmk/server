@@ -50,7 +50,7 @@ void ChatServer::readClient()
     QDataStream in(socket);
     in.setVersion(QDataStream::Qt_6_7);
 
-    static quint32 blockSize = 0;
+    quint32 blockSize = 0;
     if (blockSize == 0 && socket->bytesAvailable() < sizeof(quint32)) return;
     if (blockSize == 0) in >> blockSize;
     if (socket->bytesAvailable() < blockSize) return;
@@ -107,7 +107,10 @@ void ChatServer::readClient()
     else if(flag == "edit") {
         QJsonDocument sendDoc(editProfileProcess(json));
         sendJson(sendDoc);
+    } else if(flag == "avatars_update") {
+        getCurrentAvatarUrlById(json["ids"].toArray());
     }
+
     blockSize = 0;
 }
 
@@ -128,6 +131,7 @@ void ChatServer::SendToClient(QJsonDocument doc, const QString& senderLogin)
             qDebug() << "works if";
             it.value()->write(data);
             it.value()->flush();
+            it.value()->waitForBytesWritten(3000);
         }
         else
         {
@@ -149,6 +153,7 @@ void ChatServer::SendToClient(QJsonDocument doc, const QString& senderLogin)
 
             it.value()->write(dataToOut);
             it.value()->flush();
+            it.value()->waitForBytesWritten(3000);
         }
     }
 }
@@ -180,6 +185,7 @@ void ChatServer::sendJson(const QJsonDocument &sendDoc)
 
     socket->write(bytes);
     socket->flush();
+    socket->waitForBytesWritten(3000);
 }
 
 QJsonObject ChatServer::loginProcess(QJsonObject json)
@@ -392,30 +398,24 @@ void ChatServer::updatingChatsProcess(QJsonObject json)
 
                     QString senderLogin;
                     QString receiverLogin;
-                    QString sender_avatar_url;
-                    QString receiver_avatar_url;
 
                     QSqlQuery senderQuery;
-                    senderQuery.prepare("SELECT userlogin, avatar_url FROM users WHERE id_user = :sender_id");
+                    senderQuery.prepare("SELECT userlogin FROM users WHERE id_user = :sender_id");
                     senderQuery.bindValue(":sender_id", senderId);
                     if (senderQuery.exec() && senderQuery.next()) {
                         senderLogin = senderQuery.value(0).toString();
-                        sender_avatar_url = senderQuery.value(1).toString();
                     }
                     QSqlQuery receiverQuery;
-                    receiverQuery.prepare("SELECT userlogin, avatar_url FROM users WHERE id_user = :receiver_id");
+                    receiverQuery.prepare("SELECT userlogin FROM users WHERE id_user = :receiver_id");
                     receiverQuery.bindValue(":receiver_id", receiverId);
                     if (receiverQuery.exec() && receiverQuery.next()) {
                         receiverLogin = receiverQuery.value(0).toString();
-                        receiver_avatar_url = receiverQuery.value(1).toString();
                     }
 
                     QJsonObject messageObject;
                     messageObject["FullDate"] = timestamp;
                     messageObject["receiver_login"] = receiverLogin;
-                    messageObject["receiver_avatar_url"] = receiver_avatar_url;
                     messageObject["sender_login"] = senderLogin;
-                    messageObject["sender_avatar_url"] = sender_avatar_url;
                     messageObject["receiver_id"] = receiverId;
                     messageObject["sender_id"] = senderId;
                     messageObject["message_id"] = message_id;
@@ -434,16 +434,12 @@ void ChatServer::updatingChatsProcess(QJsonObject json)
         QJsonObject updatingJson;
         updatingJson["flag"] = "updating_chats";
         updatingJson["messages"] = jsonMessageArray;
-        if(!jsonMessageArray.isEmpty()){
-            QJsonDocument sendDoc(updatingJson);
-            sendJson(sendDoc);
-        }
-    }
-    if (json.contains("userlogin")){
+        QJsonDocument sendDoc(updatingJson);
+        sendJson(sendDoc);
+    } else if (json.contains("userlogin")){
         QString userlogin = json["userlogin"].toString();
         QJsonArray dialogIdsArray= json["dialogIds"].toArray();
         int user_id = -1;
-
         QSqlQuery query;
 
         query.prepare("SELECT id_user FROM users WHERE userlogin = :userlogin");
@@ -482,7 +478,7 @@ void ChatServer::updatingChatsProcess(QJsonObject json)
 
         for (int dialog_id : dialogIds) {
             QSqlQuery query;
-            query.prepare("SELECT message_id, content, media_url timestamp, sender_id, receiver_id "
+            query.prepare("SELECT message_id, content, media_url, timestamp, sender_id, receiver_id "
                           "FROM messages "
                           "WHERE dialog_id = :dialog_id "
                           "ORDER BY timestamp");
@@ -503,30 +499,24 @@ void ChatServer::updatingChatsProcess(QJsonObject json)
 
                     QString senderLogin;
                     QString receiverLogin;
-                    QString sender_avatar_url;
-                    QString receiver_avatar_url;
 
                     QSqlQuery senderQuery;
-                    senderQuery.prepare("SELECT userlogin, avatar_url FROM users WHERE id_user = :sender_id");
+                    senderQuery.prepare("SELECT userlogin FROM users WHERE id_user = :sender_id");
                     senderQuery.bindValue(":sender_id", senderId);
                     if (senderQuery.exec() && senderQuery.next()) {
                         senderLogin = senderQuery.value(0).toString();
-                        sender_avatar_url = senderQuery.value(1).toString();
                     }
                     QSqlQuery receiverQuery;
-                    receiverQuery.prepare("SELECT userlogin, avatar_url FROM users WHERE id_user = :receiver_id");
+                    receiverQuery.prepare("SELECT userlogin FROM users WHERE id_user = :receiver_id");
                     receiverQuery.bindValue(":receiver_id", receiverId);
                     if (receiverQuery.exec() && receiverQuery.next()) {
                         receiverLogin = receiverQuery.value(0).toString();
-                        receiver_avatar_url = receiverQuery.value(1).toString();
                     }
 
                     QJsonObject messageObject;
                     messageObject["FullDate"] = timestamp;
                     messageObject["receiver_login"] = receiverLogin;
-                    messageObject["receiver_avatar_url"] = receiver_avatar_url;
                     messageObject["sender_login"] = senderLogin;
-                    messageObject["sender_avatar_url"] = sender_avatar_url;
                     messageObject["receiver_id"] = receiverId;
                     messageObject["sender_id"] = senderId;
                     messageObject["message_id"] = message_id;
@@ -545,12 +535,28 @@ void ChatServer::updatingChatsProcess(QJsonObject json)
         QJsonObject updatingJson;
         updatingJson["flag"] = "updating_chats";
         updatingJson["messages"] = jsonMessageArray;
-        if(!jsonMessageArray.isEmpty()){
-            QJsonDocument sendDoc(updatingJson);
-            sendJson(sendDoc);
-        }
+        QJsonDocument sendDoc(updatingJson);
+        sendJson(sendDoc);
     }
+}
 
+void ChatServer::getCurrentAvatarUrlById(const QJsonArray &idsArray)
+{
+    QJsonObject avatarsUpdateJson;
+    avatarsUpdateJson["flag"] = "avatars_update";
+    QJsonArray avatarsArray;
+
+    for (const QJsonValue &value : idsArray) {
+        int id = value.toInt();
+        QString avatarUrl = getAvatarUrl(id);
+        QJsonObject avatarObject;
+        avatarObject["id"] = id;
+        avatarObject["avatar_url"] = avatarUrl;
+        avatarsArray.append(avatarObject);
+    }
+    avatarsUpdateJson["avatars"] = avatarsArray;
+    QJsonDocument sendDoc(avatarsUpdateJson);
+    sendJson(sendDoc);
 }
 
 void ChatServer::personalMessageProcess(QJsonObject json)
@@ -562,8 +568,8 @@ void ChatServer::personalMessageProcess(QJsonObject json)
     QString message =  json["message"].toString();
 
 
-    QString receiver_avatar_url = getAvatarUrl(receiver_login);
-    QString sender_avatar_url = getAvatarUrl(sender_login);
+    QString receiver_avatar_url = getAvatarUrl(receiver_id);
+    QString sender_avatar_url = getAvatarUrl(sender_id);
     json["receiver_avatar_url"] = receiver_avatar_url;
     json["sender_avatar_url"] = sender_avatar_url;
 
@@ -579,12 +585,12 @@ void ChatServer::personalMessageProcess(QJsonObject json)
     sendMessageToActiveSockets(json,message_id, dialog_id);
 }
 
-QString ChatServer::getAvatarUrl(const QString &userlogin)
+QString ChatServer::getAvatarUrl(const int &user_id)
 {
     qDebug() << "getAvatarUrl starts";
     QSqlQuery query;
-    query.prepare("SELECT avatar_url FROM users WHERE userlogin = :userlogin");
-    query.bindValue(":userlogin", userlogin);
+    query.prepare("SELECT avatar_url FROM users WHERE id_user = :user_id");
+    query.bindValue(":user_id", user_id);
     if (query.exec() && query.next()) {
         return query.value(0).toString();
     } else {
@@ -688,6 +694,7 @@ void ChatServer::sendMessageToActiveSockets(QJsonObject json, int message_id, in
         for (QTcpSocket* socket : sender_socketList) {
             socket->write(dataToOut);
             socket->flush();
+            socket->waitForBytesWritten(3000);
         }
 
         if(sender_login == receiver_login and sender_id == receiver_id)
@@ -706,6 +713,7 @@ void ChatServer::sendMessageToActiveSockets(QJsonObject json, int message_id, in
         for (QTcpSocket* socket : receiver_socketList) {
             socket->write(data);
             socket->flush();
+            socket->waitForBytesWritten(3000);
         }
 
     } else {
