@@ -27,10 +27,6 @@ class ChatServer : public QTcpServer
     Q_OBJECT
 public:
     explicit ChatServer(QObject *parent = nullptr);
-
-signals:
-
-    // QTcpServer interface
 protected:
     void incomingConnection(qintptr handle) Q_DECL_OVERRIDE;
 

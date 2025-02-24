@@ -16,6 +16,10 @@ add_executable(Server
   main.cpp
   chatserver.h chatserver.cpp
   fileserver.h fileserver.cpp
+  messageServer/chatnetworkmanager.h messageServer/chatnetworkmanager.cpp
+  messageServer/clienthandler.h messageServer/clienthandler.cpp
+  messageServer/databasemanager.h messageServer/databasemanager.cpp
+  messageServer/messageprocessor.h messageServer/messageprocessor.cpp
 )
 
 target_link_libraries(Server
