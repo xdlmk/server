@@ -14,7 +14,6 @@ find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Network Sql Gui)
 
 add_executable(Server
   main.cpp
-  chatserver.h chatserver.cpp
   fileserver.h fileserver.cpp
   messageServer/chatnetworkmanager.h messageServer/chatnetworkmanager.cpp
   messageServer/clienthandler.h messageServer/clienthandler.cpp
