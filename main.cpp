@@ -1,5 +1,5 @@
 #include <QCoreApplication>
-#include "fileserver.h"
+#include "fileServer/fileserver.h"
 #include "messageServer/chatnetworkmanager.h"
 
 int main(int argc, char *argv[])

@@ -26,6 +26,7 @@ void ChatNetworkManager::setIdentifiersForClient(QTcpSocket *socket, const QStri
     for(ClientHandler* client : clients) {
         if(client->checkSocket(socket)) {
             client->setIdentifiers(login,id);
+            qDebug() << "Set login: " + login + ", set id: " + QString::number(id);
             break;
         }
     }

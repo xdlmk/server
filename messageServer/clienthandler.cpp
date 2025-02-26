@@ -93,7 +93,7 @@ void ClientHandler::handleFlag(const QString &flag, QJsonObject &json, QTcpSocke
 {
     if(flag == "login") sendJson(DatabaseManager::instance().loginProcess(json, manager, socket));
     else if(flag == "reg")  sendJson(DatabaseManager::instance().regProcess(json));
-    else if(flag == "logout") disconnectClient();
+    else if(flag == "logout") ;
     else if(flag == "search") sendJson(DatabaseManager::instance().searchProcess(json));
     else if(flag == "personal_message") MessageProcessor::personalMessageProcess(json, manager);
     else if(flag == "updating_chats") sendJson(DatabaseManager::instance().updatingChatsProcess(json));

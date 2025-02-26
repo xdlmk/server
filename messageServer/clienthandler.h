@@ -21,7 +21,7 @@ public:
 
     void sendJson(const QJsonObject &jsonToSend);
 signals:
-    void clientDisconnected(ClientHandler* client);
+    void clientDisconnected(ClientHandler *client);
 private slots:
     void readClient();
     void disconnectClient();
