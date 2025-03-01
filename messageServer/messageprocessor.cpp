@@ -20,9 +20,9 @@ void MessageProcessor::personalMessageProcess(QJsonObject &json,ChatNetworkManag
 
     if(json.contains("fileUrl")) {
         QString fileUrl =  json["fileUrl"].toString();
-        message_id = DatabaseManager::instance().saveMessageToDatabase(dialog_id, sender_id,receiver_id, message, fileUrl);
+        message_id = DatabaseManager::instance().saveMessageToDatabase(dialog_id, sender_id,receiver_id, message, fileUrl, "personal");
     } else {
-        message_id = DatabaseManager::instance().saveMessageToDatabase(dialog_id, sender_id,receiver_id, message);
+        message_id = DatabaseManager::instance().saveMessageToDatabase(dialog_id, sender_id,receiver_id, message, "" , "personal");
     }
     sendMessageToActiveSockets(json, manager, message_id, dialog_id);
 }
@@ -39,6 +39,39 @@ void MessageProcessor::sendMessageToActiveSockets(QJsonObject json, ChatNetworkM
         if(client->getLogin() == sender_login) sendToClient(client, messageJson, true);
         if(client->getLogin() == receiver_login && sender_login != receiver_login) sendToClient(client, messageJson, false);
     }
+}
+
+void MessageProcessor::sendGroupMessageToActiveSockets(QJsonObject json, ChatNetworkManager *manager, int message_id, QList<int> groupMembersIds)
+{
+    int sender_id = json["sender_id"].toInt();
+    json["time"] = QDateTime::currentDateTime().toString("HH:mm");
+
+    QList<ClientHandler*> clients = manager->getClients();
+    for(ClientHandler *client : clients) {
+        if(client->getId() == sender_id) sendToClient(client, json, true);
+        if(groupMembersIds.contains(client->getId()) && sender_id != client->getId()) sendToClient(client, json, false);
+    }
+}
+
+void MessageProcessor::groupMessageProcess(QJsonObject &json, ChatNetworkManager *manager)
+{
+    int group_id = json["group_id"].toInt();
+    int sender_id =  json["sender_id"].toInt();
+    QString message =  json["message"].toString();
+
+    QString sender_avatar_url = DatabaseManager::instance().getAvatarUrl(sender_id);
+    json["sender_avatar_url"] = sender_avatar_url;
+    json["flag"] = "group_message";
+
+    QList<int> groupMembersIds = DatabaseManager::instance().getGroupMembers(group_id);
+    int message_id;
+    if(json.contains("fileUrl")) {
+        QString fileUrl =  json["fileUrl"].toString();
+        message_id = DatabaseManager::instance().saveMessageToDatabase(0, sender_id,group_id, message, fileUrl, "group");
+    } else {
+        message_id = DatabaseManager::instance().saveMessageToDatabase(0, sender_id,group_id, message, "", "group");
+    }
+    sendGroupMessageToActiveSockets(json, manager, message_id, groupMembersIds);
 }
 
 QJsonObject MessageProcessor::createMessageJson(QJsonObject json, int message_id, int dialog_id)

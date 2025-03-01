@@ -253,6 +253,23 @@ QString DatabaseManager::getAvatarUrl(const int &user_id) {
     return "";
 }
 
+QList<int> DatabaseManager::getGroupMembers(const int &group_id)
+{
+    QList<int> members;
+    QSqlQuery query;
+
+    query.prepare("SELECT user_id FROM group_members WHERE group_id = :group_id");
+    query.bindValue(":group_id", group_id);
+    if (query.exec()) {
+        while (query.next()) {
+            members.append(query.value(0).toInt());
+        }
+    } else {
+        qDebug() << "Database error: " << query.lastError().text();
+    }
+    return members;
+}
+
 int DatabaseManager::getOrCreateDialog(int sender_id, int receiver_id)
 {
     QSqlQuery query;
@@ -274,13 +291,18 @@ int DatabaseManager::getOrCreateDialog(int sender_id, int receiver_id)
     }
 }
 
-int DatabaseManager::saveMessageToDatabase(int dialogId, int senderId, int receiverId, const QString &message, const QString &fileUrl)
+int DatabaseManager::saveMessageToDatabase(int dialogId, int senderId, int receiverId, const QString &message, const QString &fileUrl, const QString &flag)
 {
     QSqlQuery query;
-    query.prepare("INSERT INTO messages (sender_id, receiver_id, dialog_id, content, media_url) VALUES (:sender_id, :receiver_id, :dialog_id, :content, :fileUrl)");
+    if(flag == "personal") {
+        query.prepare("INSERT INTO messages (sender_id, receiver_id, dialog_id, content, media_url) VALUES (:sender_id, :receiver_id, :dialog_id, :content, :fileUrl)");
+        query.bindValue(":receiver_id", receiverId);
+        query.bindValue(":dialog_id", dialogId);
+    } else if (flag == "group") {
+        query.prepare("INSERT INTO messages (sender_id, group_id, content, media_url) VALUES (:sender_id, :group_id, :content, :fileUrl)");
+        query.bindValue(":group_id", receiverId);
+    }
     query.bindValue(":sender_id", senderId);
-    query.bindValue(":receiver_id", receiverId);
-    query.bindValue(":dialog_id", dialogId);
     query.bindValue(":content", message);
     query.bindValue(":fileUrl", fileUrl);
     if (!query.exec()) {

@@ -66,10 +66,10 @@ void FileServer::processClientRequest(const QJsonObject &json)
 {
     if (json["flag"].toString() == "avatarUrl") sendData(fileHandler.getAvatarFromServer(json));
     else if (json["flag"].toString() == "newAvatarData") sendData(fileHandler.makeAvatarUrlProcessing(json));
-    else if (json["flag"].toString() == "file") {
+    else if (json["flag"].toString() == "personal_file" || json["flag"].toString() == "group_file") {
         QString fileUrl = fileHandler.makeUrlProcessing(json);
         QJsonObject fileUrlJson;
-        fileUrlJson["flag"] = "fileUrl";
+        fileUrlJson["flag"] = json["flag"].toString()+"_url";
         fileUrlJson["fileUrl"] = fileUrl;
         sendData(fileUrlJson);
     }
