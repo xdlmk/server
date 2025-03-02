@@ -270,6 +270,28 @@ QList<int> DatabaseManager::getGroupMembers(const int &group_id)
     return members;
 }
 
+void DatabaseManager::createGroup(QJsonObject json)
+{
+    QSqlQuery createGroupQuery;
+    createGroupQuery.prepare("INSERT INTO group_chats (group_name, created_by) VALUES (:group_name, :created_by)");
+    createGroupQuery.bindValue(":group_name", json["groupName"].toString());
+    createGroupQuery.bindValue(":created_by", json["creator_id"].toInt());
+
+    if (!createGroupQuery.exec()) {
+        qWarning() << "Failed to insert into group_chats:" << createGroupQuery.lastError().text();
+    }
+    int groupId = createGroupQuery.lastInsertId().toInt();
+
+    QSqlQuery insertMemberQuery;
+    insertMemberQuery.prepare("INSERT INTO group_members (group_id, user_id) VALUES (:group_id, :user_id)");
+    insertMemberQuery.bindValue(":group_id", groupId);
+    insertMemberQuery.bindValue(":user_id", json["creator_id"].toInt());
+
+    if (!insertMemberQuery.exec()) {
+        qWarning() << "Failed to insert into group_members:" << insertMemberQuery.lastError().text();
+    }
+}
+
 int DatabaseManager::getOrCreateDialog(int sender_id, int receiver_id)
 {
     QSqlQuery query;

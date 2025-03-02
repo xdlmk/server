@@ -36,9 +36,10 @@ public:
     QString getAvatarUrl(const int& user_id);
 
     QList<int> getGroupMembers(const int& group_id);
+    void createGroup(QJsonObject json);
 
     int getOrCreateDialog(int sender_id, int receiver_id);
-    int saveMessageToDatabase(int dialogId, int senderId, int receiverId, const QString &message, const QString& fileUrl, const QString& flag);;
+    int saveMessageToDatabase(int dialogId, int senderId, int receiverId, const QString &message, const QString& fileUrl, const QString& flag);
 signals:
     void setIdentifiersForClient(QTcpSocket *socket, const QString &login, const int &id);
 

@@ -105,4 +105,5 @@ void ClientHandler::handleFlag(const QString &flag, QJsonObject &json, QTcpSocke
     else if(flag == "updating_chats") sendJson(DatabaseManager::instance().updatingChatsProcess(json));
     else if(flag == "edit") sendJson(DatabaseManager::instance().editProfileProcess(json));
     else if(flag == "avatars_update") sendJson(DatabaseManager::instance().getCurrentAvatarUrlById(json["ids"].toArray()));
+    else if(flag == "create_group") DatabaseManager::instance().createGroup(json);
 }
