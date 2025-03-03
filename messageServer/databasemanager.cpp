@@ -270,7 +270,7 @@ QList<int> DatabaseManager::getGroupMembers(const int &group_id)
     return members;
 }
 
-void DatabaseManager::createGroup(QJsonObject json)
+void DatabaseManager::createGroup(QJsonObject json, ChatNetworkManager *manager)
 {
     QSqlQuery createGroupQuery;
     createGroupQuery.prepare("INSERT INTO group_chats (group_name, created_by) VALUES (:group_name, :created_by)");
@@ -283,13 +283,33 @@ void DatabaseManager::createGroup(QJsonObject json)
     int groupId = createGroupQuery.lastInsertId().toInt();
 
     QSqlQuery insertMemberQuery;
-    insertMemberQuery.prepare("INSERT INTO group_members (group_id, user_id) VALUES (:group_id, :user_id)");
-    insertMemberQuery.bindValue(":group_id", groupId);
-    insertMemberQuery.bindValue(":user_id", json["creator_id"].toInt());
 
-    if (!insertMemberQuery.exec()) {
-        qWarning() << "Failed to insert into group_members:" << insertMemberQuery.lastError().text();
+    QJsonArray membersArray = json["members"].toArray();
+
+    QList<int> idsMembers;
+    for (const QJsonValue &value : membersArray) {
+        QJsonObject memberObject = value.toObject();
+        int id = memberObject["id"].toInt();
+        idsMembers.append(id);
     }
+    idsMembers.append(json["creator_id"].toInt());
+    for(int id : idsMembers) {
+        insertMemberQuery.prepare("INSERT INTO group_members (group_id, user_id) VALUES (:group_id, :user_id)");
+        insertMemberQuery.bindValue(":group_id", groupId);
+        insertMemberQuery.bindValue(":user_id", id);
+        if (!insertMemberQuery.exec()) {
+            qWarning() << "Failed to insert into group_members:" << insertMemberQuery.lastError().text();
+        }
+    }
+    QJsonObject groupCreateJson;
+    groupCreateJson["message"] = "Created this group";
+
+    groupCreateJson["sender_login"] = getUserLogin(json["creator_id"].toInt());
+    groupCreateJson["sender_id"] = json["creator_id"].toInt();
+    groupCreateJson["group_name"] = json["groupName"].toString();
+    groupCreateJson["group_id"] = groupId;
+
+    MessageProcessor::groupMessageProcess(groupCreateJson,manager);
 }
 
 int DatabaseManager::getOrCreateDialog(int sender_id, int receiver_id)

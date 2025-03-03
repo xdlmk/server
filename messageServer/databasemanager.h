@@ -14,6 +14,8 @@
 
 #include <QTcpSocket>
 
+#include "messageprocessor.h"
+
 class ChatNetworkManager;
 
 class DatabaseManager : public QObject {
@@ -36,7 +38,7 @@ public:
     QString getAvatarUrl(const int& user_id);
 
     QList<int> getGroupMembers(const int& group_id);
-    void createGroup(QJsonObject json);
+    void createGroup(QJsonObject json, ChatNetworkManager *manager);
 
     int getOrCreateDialog(int sender_id, int receiver_id);
     int saveMessageToDatabase(int dialogId, int senderId, int receiverId, const QString &message, const QString& fileUrl, const QString& flag);

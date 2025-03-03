@@ -1,4 +1,6 @@
 #include "messageprocessor.h"
+#include "chatnetworkmanager.h"
+#include "clienthandler.h"
 
 MessageProcessor::MessageProcessor(QObject *parent)
     : QObject{parent}
