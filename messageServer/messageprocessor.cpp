@@ -46,6 +46,7 @@ void MessageProcessor::sendMessageToActiveSockets(QJsonObject json, ChatNetworkM
 void MessageProcessor::sendGroupMessageToActiveSockets(QJsonObject json, ChatNetworkManager *manager, int message_id, QList<int> groupMembersIds)
 {
     int sender_id = json["sender_id"].toInt();
+    json["message_id"] = message_id;
     json["time"] = QDateTime::currentDateTime().toString("HH:mm");
 
     QList<ClientHandler*> clients = manager->getClients();

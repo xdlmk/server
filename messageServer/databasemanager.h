@@ -46,7 +46,7 @@ signals:
     void setIdentifiersForClient(QTcpSocket *socket, const QString &login, const int &id);
 
 private:
-    void processChatHistory(const QJsonArray &chatHistory, QJsonArray &jsonMessageArray);
+    void processChatHistory(const QJsonObject &history, QJsonArray &jsonMessageArray);
     void processUserLogin(QJsonObject json, QJsonArray &jsonMessageArray);
     int getUserId(const QString &userlogin);
     QList<int> getUserDialogs(int user_id);
