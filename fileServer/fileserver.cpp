@@ -75,7 +75,11 @@ void FileServer::processClientRequest(const QJsonObject &json)
     }
     else if (json["flag"].toString() == "fileUrl") sendData(fileHandler.getFileFromUrlProcessing(json["fileUrl"].toString(),"fileData"));
     else if (json["flag"].toString() == "voiceFileUrl") sendData(fileHandler.getFileFromUrlProcessing(json["fileUrl"].toString(),"voiceFileData"));
-    else if(json["flag"].toString() == "voice_message") {
+    else if(json["flag"].toString() == "personal_voice_message") {
+        QJsonObject voiceMessage = json;
+        fileHandler.voiceMessageProcessing(voiceMessage);
+        emit sendVoiceMessage(voiceMessage);
+    }     else if(json["flag"].toString() == "group_voice_message") {
         QJsonObject voiceMessage = json;
         fileHandler.voiceMessageProcessing(voiceMessage);
         emit sendVoiceMessage(voiceMessage);
