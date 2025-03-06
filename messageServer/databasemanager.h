@@ -31,6 +31,7 @@ public:
     QJsonObject editProfileProcess(QJsonObject json);
     QJsonObject getCurrentAvatarUrlById(const QJsonArray &idsArray);
     QJsonObject updatingChatsProcess(QJsonObject json);
+    QJsonObject loadMessagesProcess(QJsonObject requestJson);
 
     void saveFileToDatabase(const QString &fileUrl);
 
