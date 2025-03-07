@@ -8,6 +8,10 @@ MessageProcessor::MessageProcessor(QObject *parent)
 
 void MessageProcessor::personalMessageProcess(QJsonObject &json,ChatNetworkManager *manager)
 {
+    if(json.contains("group_id")) {
+        groupMessageProcess(json,manager);
+        return;
+    }
     int receiver_id = json["receiver_id"].toInt();
     int sender_id =  json["sender_id"].toInt();
     QString message =  json["message"].toString();

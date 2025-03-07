@@ -208,15 +208,72 @@ QJsonObject DatabaseManager::updatingChatsProcess(QJsonObject json) {
     QJsonArray jsonMessageArray;
     QJsonObject updatingJson;
     updatingJson["flag"] = "updating_chats";
-
-    if (json.contains("chats") || json.contains("groups")) {
-        processChatHistory(json, jsonMessageArray);
-    } else if (json.contains("userlogin")) {
-        processUserLogin(json, jsonMessageArray);
-    }
+    getUserMessages(json, jsonMessageArray);
 
     updatingJson["messages"] = jsonMessageArray;
     return updatingJson;
+}
+
+QJsonObject DatabaseManager::loadMessagesProcess(QJsonObject requestJson)
+{
+    int chat_id = requestJson["chat_id"].toInt();
+    int user_id = requestJson["user_id"].toInt();
+    int offset = requestJson["offset"].toInt();
+    QString type = requestJson["type"].toString();
+
+    int dialog_id = getOrCreateDialog(user_id,chat_id);
+
+    QJsonArray jsonMessageArray;
+
+    QSqlQuery query;
+    if(type == "personal") {
+        query.prepare("SELECT message_id, content, media_url, timestamp, sender_id, receiver_id FROM messages WHERE dialog_id = :dialog_id ORDER BY timestamp DESC LIMIT 50 OFFSET :offset");
+        query.bindValue(":dialog_id", dialog_id);
+        query.bindValue(":offset", offset);
+    } else if(type == "group") {
+        query.prepare("SELECT message_id, content, media_url, timestamp, sender_id FROM messages WHERE group_id = :group_id ORDER BY timestamp DESC LIMIT 50 OFFSET :offset");
+        query.bindValue(":group_id", chat_id);
+        query.bindValue(":offset", offset);
+    }
+
+    if (!query.exec()) qDebug() << "Fail execute query (loadMessagesProcess): " << query.lastError().text();
+    while (query.next()) {
+        if (type == "personal") {
+            appendMessageObject(query, jsonMessageArray);
+        } else if (type == "group") {
+            int message_id = query.value(0).toInt();
+            QString content = query.value(1).toString();
+            QString fileUrl = query.value(2).toString();
+            QString timestamp = query.value(3).toString();
+            int senderId = query.value(4).toInt();
+
+            QJsonObject messageObject;
+            messageObject["FullDate"] = timestamp;
+            messageObject["fileUrl"] = fileUrl;
+            messageObject["group_id"] = chat_id;
+
+            QSqlQuery queryName;
+            queryName.prepare("SELECT group_name FROM group_chats WHERE group_id = :group_id");
+            queryName.bindValue(":group_id", chat_id);
+            if (queryName.exec() && queryName.next()) {
+                messageObject["group_name"] = queryName.value(0).toString();
+            }
+
+            messageObject["sender_id"] = senderId;
+            messageObject["sender_login"] = getUserLogin(senderId);
+            messageObject["message_id"] = message_id;
+            messageObject["str"] = content;
+            messageObject["time"] = QDateTime::fromString(timestamp, Qt::ISODate).toString("hh:mm");
+
+            jsonMessageArray.prepend(messageObject);
+        }
+    }
+    QJsonObject response;
+    response["flag"] = "load_messages";
+    response["chat_name"] = requestJson["chat_name"];
+    response["type"] = requestJson["type"];
+    response["messages"] = jsonMessageArray;
+    return response;
 }
 
 void DatabaseManager::saveFileToDatabase(const QString &fileUrl)
@@ -353,90 +410,19 @@ int DatabaseManager::saveMessageToDatabase(int dialogId, int senderId, int recei
     return query.lastInsertId().toInt();
 }
 
-void DatabaseManager::processChatHistory(const QJsonObject &history, QJsonArray &jsonMessageArray) {
-    QJsonArray chatHistory = history["chats"].toArray();
-    for (const QJsonValue &value : chatHistory) {
-        QJsonObject messageObject = value.toObject();
-        int message_id = messageObject["message_id"].toInt();
-        int dialog_id = messageObject["dialog_id"].toInt();
-
-        if (dialog_id == 0) continue;
-
-        QSqlQuery query;
-        query.prepare("SELECT message_id, content, media_url, timestamp, sender_id, receiver_id FROM messages WHERE dialog_id = :dialog_id AND message_id > :message_id ORDER BY timestamp");
-        query.bindValue(":dialog_id", dialog_id);
-        query.bindValue(":message_id", message_id);
-
-        if (!query.exec()) {
-            qDebug() << "Failed execute query(personal chat history): " << query.lastError().text();
-            continue;
-        }
-
-        while (query.next()) {
-            appendMessageObject(query, jsonMessageArray);
-        }
-    }
-    QJsonArray groupsHistory = history["groups"].toArray();
-    for (const QJsonValue &value : groupsHistory) {
-        QJsonObject lastMessageObject = value.toObject();
-        int message_id = lastMessageObject["message_id"].toInt();
-        int group_id = lastMessageObject["group_id"].toInt();
-
-        if (group_id == 0) continue;
-
-        QSqlQuery query;
-        query.prepare("SELECT message_id, content, media_url, timestamp, sender_id FROM messages WHERE group_id = :group_id AND message_id > :message_id ORDER BY timestamp");
-        query.bindValue(":group_id", group_id);
-        query.bindValue(":message_id", message_id);
-
-        if (!query.exec()) {
-            qDebug() << "Failed execute query(group history): " << query.lastError().text();
-            continue;
-        }
-
-        while (query.next()) {
-            qDebug() << "query.next()(group history)";
-            int message_id = query.value(0).toInt();
-            QString content = query.value(1).toString();
-            QString fileUrl = query.value(2).toString();
-            QString timestamp = query.value(3).toString();
-            int senderId = query.value(4).toInt();
-
-            QJsonObject messageObject;
-            messageObject["FullDate"] = timestamp;
-            messageObject["fileUrl"] = fileUrl;
-            messageObject["group_id"] = group_id;
-            messageObject["group_name"] = lastMessageObject["group_name"].toString();
-            messageObject["sender_id"] = senderId;
-            messageObject["sender_login"] = getUserLogin(senderId);
-            messageObject["message_id"] = message_id;
-            messageObject["str"] = content;
-            messageObject["time"] = QDateTime::fromString(timestamp, Qt::ISODate).toString("hh:mm");
-
-            qDebug() << messageObject;
-            jsonMessageArray.append(messageObject);
-        }
-    }
-}
-
-void DatabaseManager::processUserLogin(QJsonObject json, QJsonArray &jsonMessageArray) {
+void DatabaseManager::getUserMessages(QJsonObject json, QJsonArray &jsonMessageArray) {
     QString userlogin = json["userlogin"].toString();
-    QJsonArray dialogIdsArray = json["dialogIds"].toArray();
-    QJsonArray groupsIdsArray = json["groupIds"].toArray();
     int user_id = getUserId(userlogin);
-
     if (user_id == -1) return;
 
     QList<int> dialogIds = getUserDialogs(user_id);
-    filterDialogs(dialogIds, dialogIdsArray);
-
     for (int dialog_id : dialogIds) {
         QSqlQuery query;
-        query.prepare("SELECT message_id, content, media_url, timestamp, sender_id, receiver_id FROM messages WHERE dialog_id = :dialog_id ORDER BY timestamp");
+        query.prepare("SELECT message_id, content, media_url, timestamp, sender_id, receiver_id FROM messages WHERE dialog_id = :dialog_id ORDER BY timestamp DESC LIMIT 50");
         query.bindValue(":dialog_id", dialog_id);
 
         if (!query.exec()) {
-            qDebug() << "Error query execution (select message in processUserLogin):" << query.lastError().text();
+            qDebug() << "Error query execution (select message in getUserMessages):" << query.lastError().text();
             continue;
         }
 
@@ -444,19 +430,14 @@ void DatabaseManager::processUserLogin(QJsonObject json, QJsonArray &jsonMessage
             appendMessageObject(query, jsonMessageArray);
         }
     }
-
-    QList<int> groupIds;
-    for (const QJsonValue &value : groupsIdsArray) {
-        groupIds.append(value.toInt());
-    }
+    QList<int> groupIds = getUserGroups(getUserId(userlogin));
 
     for (int group_id : groupIds) {
         QSqlQuery query;
-        query.prepare("SELECT message_id, content, media_url, timestamp, sender_id FROM messages WHERE group_id = :group_id ORDER BY timestamp");
+        query.prepare("SELECT message_id, content, media_url, timestamp, sender_id FROM messages WHERE group_id = :group_id ORDER BY timestamp DESC LIMIT 50");
         query.bindValue(":group_id", group_id);
-
         if (!query.exec()) {
-            qDebug() << "Error query execution (select message in processUserLogin):" << query.lastError().text();
+            qDebug() << "Error query execution (select message in getUserMessages):" << query.lastError().text();
             continue;
         }
 
@@ -476,16 +457,16 @@ void DatabaseManager::processUserLogin(QJsonObject json, QJsonArray &jsonMessage
             queryName.prepare("SELECT group_name FROM group_chats WHERE group_id = :group_id");
             queryName.bindValue(":group_id", group_id);
             queryName.exec();
-            query.next();
+            queryName.next();
 
-            messageObject["group_name"] = query.value(0).toString();
+            messageObject["group_name"] = queryName.value(0).toString();
             messageObject["sender_id"] = senderId;
             messageObject["sender_login"] = getUserLogin(senderId);
             messageObject["message_id"] = message_id;
             messageObject["str"] = content;
             messageObject["time"] = QDateTime::fromString(timestamp, Qt::ISODate).toString("hh:mm");
 
-            jsonMessageArray.append(messageObject);
+            jsonMessageArray.prepend(messageObject);
         }
     }
 }
@@ -522,15 +503,24 @@ QList<int> DatabaseManager::getUserDialogs(int user_id)
     return dialogIds;
 }
 
-void DatabaseManager::filterDialogs(QList<int> &dialogIds, const QJsonArray &dialogIdsArray)
+QList<int> DatabaseManager::getUserGroups(int user_id)
 {
-    QSet<int> idsToDelete;
-    for (const QJsonValue &value : dialogIdsArray) {
-        idsToDelete.insert(value.toInt());
+    QSqlQuery query;
+    query.prepare("SELECT group_id FROM group_members WHERE user_id = :user_id");
+    query.bindValue(":user_id", user_id);
+
+    QList<int> groupIds;
+    if (query.exec()) {
+        while (query.next()) {
+            int groupId = query.value(0).toInt();
+            if (!groupIds.contains(groupId)) {
+                groupIds.append(groupId);
+            }
+        }
+    } else {
+        qDebug() << "Error getting groups for user_id: " << user_id <<" with error: "<< query.lastError().text();
     }
-    dialogIds.erase(std::remove_if(dialogIds.begin(), dialogIds.end(), [&idsToDelete](int id) {
-                        return idsToDelete.contains(id);
-                    }), dialogIds.end());
+    return groupIds;
 }
 
 void DatabaseManager::appendMessageObject(QSqlQuery &query, QJsonArray &jsonMessageArray)
@@ -555,7 +545,7 @@ void DatabaseManager::appendMessageObject(QSqlQuery &query, QJsonArray &jsonMess
     messageObject["fileUrl"] = fileUrl;
     messageObject["time"] = QDateTime::fromString(timestamp, Qt::ISODate).toString("hh:mm");
 
-    jsonMessageArray.append(messageObject);
+    jsonMessageArray.prepend(messageObject);
 }
 
 QString DatabaseManager::getUserLogin(int user_id)

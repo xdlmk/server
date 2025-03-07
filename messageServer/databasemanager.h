@@ -31,6 +31,7 @@ public:
     QJsonObject editProfileProcess(QJsonObject json);
     QJsonObject getCurrentAvatarUrlById(const QJsonArray &idsArray);
     QJsonObject updatingChatsProcess(QJsonObject json);
+    QJsonObject loadMessagesProcess(QJsonObject requestJson);
 
     void saveFileToDatabase(const QString &fileUrl);
 
@@ -46,11 +47,10 @@ signals:
     void setIdentifiersForClient(QTcpSocket *socket, const QString &login, const int &id);
 
 private:
-    void processChatHistory(const QJsonObject &history, QJsonArray &jsonMessageArray);
-    void processUserLogin(QJsonObject json, QJsonArray &jsonMessageArray);
+    void getUserMessages(QJsonObject json, QJsonArray &jsonMessageArray);
     int getUserId(const QString &userlogin);
     QList<int> getUserDialogs(int user_id);
-    void filterDialogs(QList<int> &dialogIds, const QJsonArray &dialogIdsArray);
+    QList<int> getUserGroups(int user_id);
     void appendMessageObject(QSqlQuery &query, QJsonArray &jsonMessageArray);
     QString getUserLogin(int user_id);
 
