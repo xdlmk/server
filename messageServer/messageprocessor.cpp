@@ -9,6 +9,7 @@ MessageProcessor::MessageProcessor(QObject *parent)
 void MessageProcessor::personalMessageProcess(QJsonObject &json,ChatNetworkManager *manager)
 {
     if(json.contains("group_id")) {
+        json["flag"] = "group_message";
         groupMessageProcess(json,manager);
         return;
     }
@@ -65,18 +66,19 @@ void MessageProcessor::groupMessageProcess(QJsonObject &json, ChatNetworkManager
     int group_id = json["group_id"].toInt();
     int sender_id =  json["sender_id"].toInt();
     QString message =  json["message"].toString();
-
-    QString sender_avatar_url = DatabaseManager::instance().getAvatarUrl(sender_id);
-    json["sender_avatar_url"] = sender_avatar_url;
-    json["flag"] = "group_message";
-
     QList<int> groupMembersIds = DatabaseManager::instance().getGroupMembers(group_id);
-    int message_id;
-    if(json.contains("fileUrl")) {
-        QString fileUrl =  json["fileUrl"].toString();
-        message_id = DatabaseManager::instance().saveMessageToDatabase(0, sender_id,group_id, message, fileUrl, "group");
-    } else {
-        message_id = DatabaseManager::instance().saveMessageToDatabase(0, sender_id,group_id, message, "", "group");
+    int message_id = 0;
+
+    if(json["flag"].toString() != "group_info"){
+        QString sender_avatar_url = DatabaseManager::instance().getAvatarUrl(sender_id);
+        json["sender_avatar_url"] = sender_avatar_url;
+
+        if(json.contains("fileUrl")) {
+            QString fileUrl =  json["fileUrl"].toString();
+            message_id = DatabaseManager::instance().saveMessageToDatabase(0, sender_id,group_id, message, fileUrl, "group");
+        } else {
+            message_id = DatabaseManager::instance().saveMessageToDatabase(0, sender_id,group_id, message, "", "group");
+        }
     }
     sendGroupMessageToActiveSockets(json, manager, message_id, groupMembersIds);
 }

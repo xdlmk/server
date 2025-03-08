@@ -30,7 +30,7 @@ public:
     QJsonObject searchProcess(QJsonObject json);
     QJsonObject editProfileProcess(QJsonObject json);
     QJsonObject getCurrentAvatarUrlById(const QJsonArray &idsArray);
-    QJsonObject updatingChatsProcess(QJsonObject json);
+    QJsonObject updatingChatsProcess(QJsonObject json, ChatNetworkManager *manager);
     QJsonObject loadMessagesProcess(QJsonObject requestJson);
 
     void saveFileToDatabase(const QString &fileUrl);
@@ -47,7 +47,7 @@ signals:
     void setIdentifiersForClient(QTcpSocket *socket, const QString &login, const int &id);
 
 private:
-    void getUserMessages(QJsonObject json, QJsonArray &jsonMessageArray);
+    void getUserMessages(QJsonObject json, QJsonArray &jsonMessageArray, ChatNetworkManager *manager);
     int getUserId(const QString &userlogin);
     QList<int> getUserDialogs(int user_id);
     QList<int> getUserGroups(int user_id);

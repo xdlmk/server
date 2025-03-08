@@ -204,11 +204,11 @@ QJsonObject DatabaseManager::getCurrentAvatarUrlById(const QJsonArray &idsArray)
     return avatarsUpdateJson;
 }
 
-QJsonObject DatabaseManager::updatingChatsProcess(QJsonObject json) {
+QJsonObject DatabaseManager::updatingChatsProcess(QJsonObject json, ChatNetworkManager *manager) {
     QJsonArray jsonMessageArray;
     QJsonObject updatingJson;
     updatingJson["flag"] = "updating_chats";
-    getUserMessages(json, jsonMessageArray);
+    getUserMessages(json, jsonMessageArray, manager);
 
     updatingJson["messages"] = jsonMessageArray;
     return updatingJson;
@@ -359,6 +359,7 @@ void DatabaseManager::createGroup(QJsonObject json, ChatNetworkManager *manager)
         }
     }
     QJsonObject groupCreateJson;
+    groupCreateJson["flag"] = "group_message";
     groupCreateJson["message"] = "Created this group";
 
     groupCreateJson["sender_login"] = getUserLogin(json["creator_id"].toInt());
@@ -367,6 +368,20 @@ void DatabaseManager::createGroup(QJsonObject json, ChatNetworkManager *manager)
     groupCreateJson["group_id"] = groupId;
 
     MessageProcessor::groupMessageProcess(groupCreateJson,manager);
+
+    QJsonObject groupInfoJson;
+    groupInfoJson["flag"] = "group_info";
+    groupInfoJson["group_name"] = json["groupName"].toString();
+    groupInfoJson["group_id"] = groupId;
+    QJsonArray groupMembersArray;
+    for (const QJsonValue &value : membersArray) {
+        QJsonObject memberObject = value.toObject();
+        memberObject["status"] = memberObject["id"].toInt() == json["creator_id"].toInt() ? "creator" : "member";
+        groupMembersArray.append(memberObject);
+    }
+    groupInfoJson["members"] = groupMembersArray;
+
+    MessageProcessor::groupMessageProcess(groupInfoJson,manager);
 }
 
 int DatabaseManager::getOrCreateDialog(int sender_id, int receiver_id)
@@ -410,7 +425,7 @@ int DatabaseManager::saveMessageToDatabase(int dialogId, int senderId, int recei
     return query.lastInsertId().toInt();
 }
 
-void DatabaseManager::getUserMessages(QJsonObject json, QJsonArray &jsonMessageArray) {
+void DatabaseManager::getUserMessages(QJsonObject json, QJsonArray &jsonMessageArray, ChatNetworkManager *manager) {
     QString userlogin = json["userlogin"].toString();
     int user_id = getUserId(userlogin);
     if (user_id == -1) return;
@@ -431,6 +446,43 @@ void DatabaseManager::getUserMessages(QJsonObject json, QJsonArray &jsonMessageA
         }
     }
     QList<int> groupIds = getUserGroups(getUserId(userlogin));
+    for (int group_id : groupIds) {
+        QJsonObject groupInfoJson;
+        groupInfoJson["flag"] = "group_info";
+
+        QSqlQuery queryName;
+        queryName.prepare("SELECT group_name FROM group_chats WHERE group_id = :group_id");
+        queryName.bindValue(":group_id", group_id);
+        if(queryName.exec() && queryName.next());
+        groupInfoJson["group_name"] = queryName.value(0).toString();
+        groupInfoJson["group_id"] = group_id;
+
+        QSqlQuery queryCreatedBy;
+        int creator_id;
+        queryCreatedBy.prepare("SELECT created_by FROM group_chats WHERE group_id = :group_id");
+        queryCreatedBy.bindValue(":group_id", group_id);
+        if (queryCreatedBy.exec() && queryCreatedBy.next()) {
+            creator_id = queryCreatedBy.value(0).toInt();
+        }
+
+        QJsonArray groupMembersArray;
+
+        QSqlQuery queryMembers;
+        queryMembers.prepare("SELECT user_id FROM group_members WHERE group_id = :group_id");
+        queryMembers.bindValue(":group_id", group_id);
+        if (queryMembers.exec()) {
+            while (queryMembers.next()) {
+                QJsonObject member;
+                int user_id = queryMembers.value(0).toInt();
+                member["id"] = user_id;
+                member["username"] = getUserLogin(user_id);
+                member["status"] = user_id == creator_id ? "creator" : "member";
+                groupMembersArray.append(member);
+            }
+        }
+        groupInfoJson["members"] = groupMembersArray;
+        MessageProcessor::groupMessageProcess(groupInfoJson,manager);
+    }
 
     for (int group_id : groupIds) {
         QSqlQuery query;
