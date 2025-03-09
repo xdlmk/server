@@ -32,6 +32,7 @@ public:
     QJsonObject getCurrentAvatarUrlById(const QJsonArray &idsArray);
     QJsonObject updatingChatsProcess(QJsonObject json, ChatNetworkManager *manager);
     QJsonObject loadMessagesProcess(QJsonObject requestJson);
+    QJsonObject getGroupInformation(QJsonObject json);
 
     void saveFileToDatabase(const QString &fileUrl);
 

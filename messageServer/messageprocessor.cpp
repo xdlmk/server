@@ -50,19 +50,31 @@ void MessageProcessor::sendMessageToActiveSockets(QJsonObject json, ChatNetworkM
 
 void MessageProcessor::sendGroupMessageToActiveSockets(QJsonObject json, ChatNetworkManager *manager, int message_id, QList<int> groupMembersIds)
 {
+    qDebug() << "sendGroupMessageToActiveSockets starts";
     int sender_id = json["sender_id"].toInt();
+    qDebug() << "sender_id: " << sender_id;
     json["message_id"] = message_id;
     json["time"] = QDateTime::currentDateTime().toString("HH:mm");
 
     QList<ClientHandler*> clients = manager->getClients();
     for(ClientHandler *client : clients) {
-        if(client->getId() == sender_id) sendToClient(client, json, true);
-        if(groupMembersIds.contains(client->getId()) && sender_id != client->getId()) sendToClient(client, json, false);
+        qDebug() << "client->getId() = " << client->getId();
+        qDebug() << "groupMembersIds = " << groupMembersIds;
+        if(client->getId() == sender_id) {
+            qDebug() << "client->getId() == sender_id";
+            sendToClient(client, json, true);
+        }
+        qDebug() << "contains = " << groupMembersIds.contains(client->getId());
+        if(groupMembersIds.contains(client->getId()) && sender_id != client->getId()) {
+            qDebug() << "groupMembersIds.contains(client->getId()) && sender_id != client->getId()";
+            sendToClient(client, json, false);
+        }
     }
 }
 
 void MessageProcessor::groupMessageProcess(QJsonObject &json, ChatNetworkManager *manager)
 {
+    qDebug() << "groupMessageProcess starts";
     int group_id = json["group_id"].toInt();
     int sender_id =  json["sender_id"].toInt();
     QString message =  json["message"].toString();
@@ -106,6 +118,8 @@ QJsonObject MessageProcessor::createMessageJson(QJsonObject json, int message_id
 
 void MessageProcessor::sendToClient(ClientHandler *client, QJsonObject& messageJson, bool isSender)
 {
+
+    qDebug() << "sendToClient starts";
     if(isSender) {
         messageJson.remove("sender_login");
         messageJson.remove("sender_id");

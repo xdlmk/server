@@ -276,6 +276,57 @@ QJsonObject DatabaseManager::loadMessagesProcess(QJsonObject requestJson)
     return response;
 }
 
+QJsonObject DatabaseManager::getGroupInformation(QJsonObject json)
+{
+    QString userlogin = json["userlogin"].toString();
+    int user_id = getUserId(userlogin);
+    QList<int> groupIds = getUserGroups(user_id);
+    QJsonObject groupsInfo;
+    groupsInfo["flag"] = "group_info";
+
+    QJsonArray groupsInfoArray;
+    for (int group_id : groupIds) {
+        QJsonObject groupInfoJson;
+
+        QSqlQuery queryName;
+        queryName.prepare("SELECT group_name FROM group_chats WHERE group_id = :group_id");
+        queryName.bindValue(":group_id", group_id);
+        if(queryName.exec() && queryName.next());
+        groupInfoJson["group_name"] = queryName.value(0).toString();
+        groupInfoJson["group_id"] = group_id;
+
+        QSqlQuery queryCreatedBy;
+        int creator_id;
+        queryCreatedBy.prepare("SELECT created_by FROM group_chats WHERE group_id = :group_id");
+        queryCreatedBy.bindValue(":group_id", group_id);
+        if (queryCreatedBy.exec() && queryCreatedBy.next()) {
+            creator_id = queryCreatedBy.value(0).toInt();
+        }
+
+        QJsonArray groupMembersArray;
+
+        QSqlQuery queryMembers;
+        queryMembers.prepare("SELECT user_id FROM group_members WHERE group_id = :group_id");
+        queryMembers.bindValue(":group_id", group_id);
+        if (queryMembers.exec()) {
+            while (queryMembers.next()) {
+                QJsonObject member;
+                int user_id = queryMembers.value(0).toInt();
+                member["id"] = user_id;
+                member["username"] = getUserLogin(user_id);
+                member["status"] = user_id == creator_id ? "creator" : "member";
+                member["avatar_url"] = getAvatarUrl(user_id);
+
+                groupMembersArray.append(member);
+            }
+        }
+        groupInfoJson["members"] = groupMembersArray;
+        groupsInfoArray.append(groupInfoJson);
+    }
+    groupsInfo["info"] = groupsInfoArray;
+    return groupsInfo;
+}
+
 void DatabaseManager::saveFileToDatabase(const QString &fileUrl)
 {
     QSqlQuery query;
@@ -371,15 +422,28 @@ void DatabaseManager::createGroup(QJsonObject json, ChatNetworkManager *manager)
 
     QJsonObject groupInfoJson;
     groupInfoJson["flag"] = "group_info";
-    groupInfoJson["group_name"] = json["groupName"].toString();
     groupInfoJson["group_id"] = groupId;
+    QJsonArray groupsInfoArray;
+
+    QJsonObject groupInfoObject;
+    groupInfoObject["group_name"] = json["groupName"].toString();
+    groupInfoObject["group_id"] = groupId;
+
+    QJsonObject creatorObject;
+    creatorObject["id"] = json["creator_id"];
+    creatorObject["username"] = groupCreateJson["sender_login"];
+    membersArray.append(creatorObject);
     QJsonArray groupMembersArray;
     for (const QJsonValue &value : membersArray) {
         QJsonObject memberObject = value.toObject();
-        memberObject["status"] = memberObject["id"].toInt() == json["creator_id"].toInt() ? "creator" : "member";
+        memberObject["status"] = memberObject["id"] == json["creator_id"] ? "creator" : "member";
+        memberObject["avatar_url"] = getAvatarUrl(memberObject["id"].toInt());
         groupMembersArray.append(memberObject);
     }
-    groupInfoJson["members"] = groupMembersArray;
+
+    groupInfoObject["members"] = groupMembersArray;
+    groupsInfoArray.append(groupInfoObject);
+    groupInfoJson["info"] = groupsInfoArray;
 
     MessageProcessor::groupMessageProcess(groupInfoJson,manager);
 }
@@ -445,45 +509,7 @@ void DatabaseManager::getUserMessages(QJsonObject json, QJsonArray &jsonMessageA
             appendMessageObject(query, jsonMessageArray);
         }
     }
-    QList<int> groupIds = getUserGroups(getUserId(userlogin));
-    for (int group_id : groupIds) {
-        QJsonObject groupInfoJson;
-        groupInfoJson["flag"] = "group_info";
-
-        QSqlQuery queryName;
-        queryName.prepare("SELECT group_name FROM group_chats WHERE group_id = :group_id");
-        queryName.bindValue(":group_id", group_id);
-        if(queryName.exec() && queryName.next());
-        groupInfoJson["group_name"] = queryName.value(0).toString();
-        groupInfoJson["group_id"] = group_id;
-
-        QSqlQuery queryCreatedBy;
-        int creator_id;
-        queryCreatedBy.prepare("SELECT created_by FROM group_chats WHERE group_id = :group_id");
-        queryCreatedBy.bindValue(":group_id", group_id);
-        if (queryCreatedBy.exec() && queryCreatedBy.next()) {
-            creator_id = queryCreatedBy.value(0).toInt();
-        }
-
-        QJsonArray groupMembersArray;
-
-        QSqlQuery queryMembers;
-        queryMembers.prepare("SELECT user_id FROM group_members WHERE group_id = :group_id");
-        queryMembers.bindValue(":group_id", group_id);
-        if (queryMembers.exec()) {
-            while (queryMembers.next()) {
-                QJsonObject member;
-                int user_id = queryMembers.value(0).toInt();
-                member["id"] = user_id;
-                member["username"] = getUserLogin(user_id);
-                member["status"] = user_id == creator_id ? "creator" : "member";
-                groupMembersArray.append(member);
-            }
-        }
-        groupInfoJson["members"] = groupMembersArray;
-        MessageProcessor::groupMessageProcess(groupInfoJson,manager);
-    }
-
+    QList<int> groupIds = getUserGroups(user_id);
     for (int group_id : groupIds) {
         QSqlQuery query;
         query.prepare("SELECT message_id, content, media_url, timestamp, sender_id FROM messages WHERE group_id = :group_id ORDER BY timestamp DESC LIMIT 50");
