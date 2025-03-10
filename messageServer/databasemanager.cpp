@@ -187,10 +187,14 @@ QJsonObject DatabaseManager::editProfileProcess(QJsonObject dataEditProfile) {
     return editResults;
 }
 
-QJsonObject DatabaseManager::getCurrentAvatarUrlById(const QJsonArray &idsArray) {
+QJsonObject DatabaseManager::getCurrentAvatarUrlById(const QJsonObject &avatarsUpdate) {
+    QJsonArray idsArray = avatarsUpdate["ids"].toArray();
+    QJsonArray groupIds = avatarsUpdate["groups_ids"].toArray();
     QJsonObject avatarsUpdateJson;
     avatarsUpdateJson["flag"] = "avatars_update";
+
     QJsonArray avatarsArray;
+    QJsonArray groupsAvatarsArray;
 
     for (const QJsonValue &value : idsArray) {
         int id = value.toInt();
@@ -200,7 +204,17 @@ QJsonObject DatabaseManager::getCurrentAvatarUrlById(const QJsonArray &idsArray)
         avatarObject["avatar_url"] = avatarUrl;
         avatarsArray.append(avatarObject);
     }
+
+    for (const QJsonValue &value : groupIds) {
+        int id = value.toInt();
+        QString avatarUrl = getGroupAvatarUrl(id);
+        QJsonObject avatarObject;
+        avatarObject["group_id"] = id;
+        avatarObject["avatar_url"] = avatarUrl;
+        groupsAvatarsArray.append(avatarObject);
+    }
     avatarsUpdateJson["avatars"] = avatarsArray;
+    avatarsUpdateJson["groups_avatars"] = groupsAvatarsArray;
     return avatarsUpdateJson;
 }
 
@@ -288,20 +302,15 @@ QJsonObject DatabaseManager::getGroupInformation(QJsonObject json)
     for (int group_id : groupIds) {
         QJsonObject groupInfoJson;
 
+        int creator_id;
         QSqlQuery queryName;
-        queryName.prepare("SELECT group_name FROM group_chats WHERE group_id = :group_id");
+        queryName.prepare("SELECT group_name, avatar_url, created_by FROM group_chats WHERE group_id = :group_id");
         queryName.bindValue(":group_id", group_id);
         if(queryName.exec() && queryName.next());
         groupInfoJson["group_name"] = queryName.value(0).toString();
+        groupInfoJson["avatar_url"] = queryName.value(1).toString();
+        creator_id = queryName.value(2).toInt();
         groupInfoJson["group_id"] = group_id;
-
-        QSqlQuery queryCreatedBy;
-        int creator_id;
-        queryCreatedBy.prepare("SELECT created_by FROM group_chats WHERE group_id = :group_id");
-        queryCreatedBy.bindValue(":group_id", group_id);
-        if (queryCreatedBy.exec() && queryCreatedBy.next()) {
-            creator_id = queryCreatedBy.value(0).toInt();
-        }
 
         QJsonArray groupMembersArray;
 
@@ -327,6 +336,59 @@ QJsonObject DatabaseManager::getGroupInformation(QJsonObject json)
     return groupsInfo;
 }
 
+QJsonObject DatabaseManager::getDialogsInformation(QJsonObject json)
+{
+    QString userlogin = json["userlogin"].toString();
+    int user_id = getUserId(userlogin);
+    QList<int> dialogsIds = getUserDialogs(user_id);
+    QJsonObject dialogsInfo;
+    dialogsInfo["flag"] = "dialogs_info";
+
+    QJsonArray dialogsInfoArray;
+    for (int dialog_id : dialogsIds) {
+        QJsonObject dialogsInfoJson;
+        if(dialog_id == 0) continue;
+
+        QSqlQuery query;
+        query.prepare("SELECT CASE WHEN user1_id = :user_id THEN user2_id ELSE user1_id END AS second_user_id "
+                      "FROM dialogs WHERE dialog_id = :dialog_id");
+        query.bindValue(":dialog_id", dialog_id);
+        query.bindValue(":user_id", user_id);
+
+        if (query.exec() && query.next()) {
+            int second_user_id = query.value(0).toInt();
+
+            QSqlQuery userQuery;
+            userQuery.prepare("SELECT * FROM users WHERE id_user = :second_user_id");
+            userQuery.bindValue(":second_user_id", second_user_id);
+
+            if (userQuery.exec() && userQuery.next()) {
+                int id_user = userQuery.value(0).toInt();
+                QString username = userQuery.value(1).toString();
+                QString userlogin = userQuery.value(2).toString();
+                QString phone_number = userQuery.value(4).toString();
+                QString avatar_url = userQuery.value(5).toString();
+                QDateTime created_at = userQuery.value(6).toDateTime();
+
+                dialogsInfoJson["user_id"] = id_user;
+                dialogsInfoJson["username"] = username;
+                dialogsInfoJson["userlogin"] = userlogin;
+                dialogsInfoJson["phone_number"] = phone_number;
+                dialogsInfoJson["avatar_url"] = avatar_url;
+                dialogsInfoJson["created_at"] = created_at.toString();
+            } else {
+                qWarning() << "User with id: " << second_user_id << " not found";
+            }
+        } else {
+            qWarning() << "Dialog with id:" << dialog_id << " not found";
+        }
+
+        dialogsInfoArray.append(dialogsInfoJson);
+    }
+    dialogsInfo["info"] = dialogsInfoArray;
+    return dialogsInfo;
+}
+
 void DatabaseManager::saveFileToDatabase(const QString &fileUrl)
 {
     QSqlQuery query;
@@ -349,7 +411,7 @@ void DatabaseManager::setAvatarInDatabase(const QString &avatarUrl, const int &u
 }
 
 QString DatabaseManager::getAvatarUrl(const int &user_id) {
-    qDebug() << "getAvatarUrl starts";
+    qDebug() << "getAvatarUrl starts with id " + user_id;
     QSqlQuery query;
     query.prepare("SELECT avatar_url FROM users WHERE id_user = :user_id");
     query.bindValue(":user_id", user_id);
@@ -357,6 +419,20 @@ QString DatabaseManager::getAvatarUrl(const int &user_id) {
         return query.value(0).toString();
     } else {
         qDebug() << "query getAvatarUrl error: " << query.lastError().text();
+    }
+    return "";
+}
+
+QString DatabaseManager::getGroupAvatarUrl(const int &group_id)
+{
+    qDebug() << "getGroupAvatarUrl starts with id " + group_id;
+    QSqlQuery query;
+    query.prepare("SELECT avatar_url FROM group_chats WHERE group_id = :group_id");
+    query.bindValue(":group_id", group_id);
+    if (query.exec() && query.next()) {
+        return query.value(0).toString();
+    } else {
+        qDebug() << "query getGroupAvatarUrl error: " << query.lastError().text();
     }
     return "";
 }

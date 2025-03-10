@@ -6,7 +6,7 @@ FileHandler::FileHandler(QObject *parent) : QObject{parent} {
 
 QJsonObject FileHandler::getAvatarFromServer(const QJsonObject &json)
 {
-    qDebug() << "getAvatarFromServer starts";
+    qDebug() << "getAvatarFromServer starts with url " + json["avatar_url"].toString();
     QDir dir("uploads");
     if (!dir.exists()) {
         dir.mkpath(".");
@@ -21,6 +21,7 @@ QJsonObject FileHandler::getAvatarFromServer(const QJsonObject &json)
     }
     QJsonObject fileDataJson;
     fileDataJson["flag"] = "avatarData";
+    fileDataJson["type"] = json["type"].toString();
     fileDataJson["user_id"] = json["user_id"].toInt();
     fileDataJson["avatar_url"] = json["avatar_url"].toString();
     fileDataJson["avatarData"] = QString(fileData.toBase64());
@@ -36,6 +37,7 @@ QJsonObject FileHandler::makeAvatarUrlProcessing(const QJsonObject &json)
 
     QJsonObject avatarUrlJson;
     avatarUrlJson["flag"] = "avatarUrl";
+    avatarUrlJson["type"] = json["type"];
     avatarUrlJson["avatar_url"] = avatarUrl;
     avatarUrlJson["user_id"] = user_id;
 

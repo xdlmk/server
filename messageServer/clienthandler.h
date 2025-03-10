@@ -7,6 +7,8 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 
+#include <QThread>
+
 #include "chatnetworkmanager.h"
 #include "messageprocessor.h"
 
