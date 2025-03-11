@@ -9,6 +9,7 @@ FileServer::FileServer(QObject *parent) : QTcpServer{parent} {
     }
     connect(&fileHandler,&FileHandler::saveFileToDatabase,this,&FileServer::saveFileToDatabase);
     connect(&fileHandler,&FileHandler::setAvatarInDatabase,this,&FileServer::setAvatarInDatabase);
+    connect(&fileHandler,&FileHandler::createGroup,this,&FileServer::createGroup);
 }
 
 void FileServer::incomingConnection(qintptr handle) {
@@ -79,9 +80,12 @@ void FileServer::processClientRequest(const QJsonObject &json)
         QJsonObject voiceMessage = json;
         fileHandler.voiceMessageProcessing(voiceMessage);
         emit sendVoiceMessage(voiceMessage);
-    }     else if(json["flag"].toString() == "group_voice_message") {
+    } else if(json["flag"].toString() == "group_voice_message") {
         QJsonObject voiceMessage = json;
         fileHandler.voiceMessageProcessing(voiceMessage);
         emit sendVoiceMessage(voiceMessage);
+    } else if(json["flag"].toString() == "create_group") {
+        QJsonObject createGroupJson = json;
+        fileHandler.createGroupWithAvatarProcessing(createGroupJson);
     }
 }

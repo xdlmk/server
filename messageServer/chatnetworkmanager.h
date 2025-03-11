@@ -21,6 +21,7 @@ signals:
     void saveFileToDatabase(const QString &fileUrl);
     void setAvatarInDatabase(const QString &avatarUrl, const int &user_id);
     void personalMessageProcess(QJsonObject &json,ChatNetworkManager *manager);
+    void createGroup(const QJsonObject& createGroupJson);
 private:
     QList<ClientHandler*> clients;
     void removeClient(ClientHandler *client);

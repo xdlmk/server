@@ -13,6 +13,9 @@ ChatNetworkManager::ChatNetworkManager(QObject *parent) : QTcpServer(parent) {
         QObject::connect(this,&ChatNetworkManager::personalMessageProcess,[](QJsonObject &json, ChatNetworkManager *manager) {
             MessageProcessor::personalMessageProcess(json, manager);
         });
+        QObject::connect(this, &ChatNetworkManager::createGroup,[this](const QJsonObject& json){
+            DatabaseManager::instance().createGroup(json,this);
+        });
     }
 }
 

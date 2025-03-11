@@ -21,9 +21,12 @@ public:
     QString makeUrlProcessing(const QJsonObject &json);
     QJsonObject getFileFromUrlProcessing(const QString &fileUrl, const QString &flag);
     void voiceMessageProcessing(QJsonObject &voiceJson);
+    void createGroupWithAvatarProcessing(QJsonObject &createGroupJson);
 signals:
     void setAvatarInDatabase(const QString& avatarUrl, const int& user_id);
     void saveFileToDatabase(const QString& fileUrl);
+
+    void createGroup(const QJsonObject& createGroupJson);
 
 };
 

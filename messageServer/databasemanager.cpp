@@ -432,7 +432,7 @@ QString DatabaseManager::getGroupAvatarUrl(const int &group_id)
     if (query.exec() && query.next()) {
         return query.value(0).toString();
     } else {
-        qDebug() << "query getGroupAvatarUrl error: " << query.lastError().text();
+        qDebug() << "query getGroupAvatarUrl error: " << query.lastError().text() << "for id: " << group_id;
     }
     return "";
 }
@@ -457,9 +457,10 @@ QList<int> DatabaseManager::getGroupMembers(const int &group_id)
 void DatabaseManager::createGroup(QJsonObject json, ChatNetworkManager *manager)
 {
     QSqlQuery createGroupQuery;
-    createGroupQuery.prepare("INSERT INTO group_chats (group_name, created_by) VALUES (:group_name, :created_by)");
+    createGroupQuery.prepare("INSERT INTO group_chats (group_name, created_by, avatar_url) VALUES (:group_name, :created_by, :avatar_url)");
     createGroupQuery.bindValue(":group_name", json["groupName"].toString());
     createGroupQuery.bindValue(":created_by", json["creator_id"].toInt());
+    createGroupQuery.bindValue(":avatar_url", json["avatar_url"].toString());
 
     if (!createGroupQuery.exec()) {
         qWarning() << "Failed to insert into group_chats:" << createGroupQuery.lastError().text();
@@ -493,35 +494,10 @@ void DatabaseManager::createGroup(QJsonObject json, ChatNetworkManager *manager)
     groupCreateJson["sender_id"] = json["creator_id"].toInt();
     groupCreateJson["group_name"] = json["groupName"].toString();
     groupCreateJson["group_id"] = groupId;
+    groupCreateJson["group_avatar_url"] = json["avatar_url"].toString();
+    groupCreateJson["only_create"] = "true";
 
     MessageProcessor::groupMessageProcess(groupCreateJson,manager);
-
-    QJsonObject groupInfoJson;
-    groupInfoJson["flag"] = "group_info";
-    groupInfoJson["group_id"] = groupId;
-    QJsonArray groupsInfoArray;
-
-    QJsonObject groupInfoObject;
-    groupInfoObject["group_name"] = json["groupName"].toString();
-    groupInfoObject["group_id"] = groupId;
-
-    QJsonObject creatorObject;
-    creatorObject["id"] = json["creator_id"];
-    creatorObject["username"] = groupCreateJson["sender_login"];
-    membersArray.append(creatorObject);
-    QJsonArray groupMembersArray;
-    for (const QJsonValue &value : membersArray) {
-        QJsonObject memberObject = value.toObject();
-        memberObject["status"] = memberObject["id"] == json["creator_id"] ? "creator" : "member";
-        memberObject["avatar_url"] = getAvatarUrl(memberObject["id"].toInt());
-        groupMembersArray.append(memberObject);
-    }
-
-    groupInfoObject["members"] = groupMembersArray;
-    groupsInfoArray.append(groupInfoObject);
-    groupInfoJson["info"] = groupsInfoArray;
-
-    MessageProcessor::groupMessageProcess(groupInfoJson,manager);
 }
 
 int DatabaseManager::getOrCreateDialog(int sender_id, int receiver_id)

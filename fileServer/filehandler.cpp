@@ -46,7 +46,7 @@ QJsonObject FileHandler::makeAvatarUrlProcessing(const QJsonObject &json)
 
 QString FileHandler::makeUrlProcessing(const QJsonObject &json)
 {
-    qDebug() << "makeUrlProcessing starts";
+    qDebug() << "makeUrlProcessing starts" ;
     QString fileName = json["fileName"].toString();
     QString fileExtension = json["fileExtension"].toString();
     QString fileDataBase64 = json["fileData"].toString();
@@ -120,4 +120,16 @@ void FileHandler::voiceMessageProcessing(QJsonObject &voiceJson)
     voiceJson["message"] = "";
 
     emit saveFileToDatabase(uniqueFileName);
+}
+
+void FileHandler::createGroupWithAvatarProcessing(QJsonObject &createGroupJson)
+{
+    QString fileUrl = makeUrlProcessing(createGroupJson);
+    createGroupJson.remove("fileData");
+    createGroupJson["avatar_url"] = fileUrl;
+    qDebug() << "createGroupWithAvatarProcessing json " << createGroupJson;
+    createGroupJson.remove("fileName");
+    createGroupJson.remove("fileExtension");
+
+    emit createGroup(createGroupJson);
 }
