@@ -34,6 +34,7 @@ public:
     QJsonObject loadMessagesProcess(QJsonObject requestJson);
     QJsonObject getGroupInformation(QJsonObject json);
     QJsonObject getDialogsInformation(QJsonObject json);
+    QJsonObject deleteMemberFromGroup(const QJsonObject deleteMemberJson);
 
     void saveFileToDatabase(const QString &fileUrl);
 

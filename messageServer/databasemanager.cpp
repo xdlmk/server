@@ -389,6 +389,44 @@ QJsonObject DatabaseManager::getDialogsInformation(QJsonObject json)
     return dialogsInfo;
 }
 
+QJsonObject DatabaseManager::deleteMemberFromGroup(const QJsonObject deleteMemberJson)
+{
+    int user_id_deletion = deleteMemberJson["user_id"].toInt();
+    int group_id = deleteMemberJson["group_id"].toInt();
+    int creator_id = deleteMemberJson["creator_id"].toInt();
+    QJsonObject deleteMemberResult;
+    deleteMemberResult["flag"] = "delete_member";
+
+    QSqlQuery query;
+    query.prepare("SELECT COUNT(*) FROM group_chats WHERE group_id = :group_id AND created_by = :created_by");
+    query.bindValue(":group_id", group_id);
+    query.bindValue(":created_by", creator_id);
+    query.exec();
+    query.next();
+
+    int count = query.value(0).toInt();
+    if (count > 0) {
+        query.prepare("DELETE FROM group_members WHERE user_id = :user_id AND group_id = :group_id");
+        query.bindValue(":user_id", user_id_deletion);
+        query.bindValue(":group_id", group_id);
+
+        query.exec();
+
+        if (query.numRowsAffected() > 0) {
+            qDebug() << "Member delete success id: " << user_id_deletion << " for group_id =" << group_id;
+            deleteMemberResult["deleted_user_id"] = user_id_deletion;
+            deleteMemberResult["error_code"] = 0;
+        } else {
+            qDebug() << "User with user_id: " << user_id_deletion << "not a member group with group_id: " << group_id;
+            deleteMemberResult["error_code"] = 1;
+        }
+    } else {
+        qDebug() << "User with id: " << creator_id << " not the admin of the group with id: " << group_id;
+        deleteMemberResult["error_code"] = 2;
+    }
+    return deleteMemberResult;
+}
+
 void DatabaseManager::saveFileToDatabase(const QString &fileUrl)
 {
     QSqlQuery query;
