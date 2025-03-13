@@ -109,7 +109,8 @@ void ClientHandler::handleFlag(const QString &flag, QJsonObject &json, QTcpSocke
         infoObject["dialogs_info"] = DatabaseManager::instance().getDialogsInformation(json);
         infoObject["groups_info"] = DatabaseManager::instance().getGroupInformation(json);
         sendJson(infoObject);
-    } else if(flag == "delete_member") sendJson(DatabaseManager::instance().deleteMemberFromGroup(json));
+    } else if(flag == "delete_member") MessageProcessor::sendGroupMessageToActiveSockets(DatabaseManager::instance().deleteMemberFromGroup(json), manager, DatabaseManager::instance().getGroupMembers(json["group_id"].toInt()));
+    else if(flag == "add_group_members") MessageProcessor::sendGroupMessageToActiveSockets(DatabaseManager::instance().addMemberToGroup(json), manager, DatabaseManager::instance().getGroupMembers(json["group_id"].toInt()));
     else if(flag == "load_messages") sendJson(DatabaseManager::instance().loadMessagesProcess(json));
     else if(flag == "edit") sendJson(DatabaseManager::instance().editProfileProcess(json));
     else if(flag == "avatars_update") sendJson(DatabaseManager::instance().getCurrentAvatarUrlById(json));

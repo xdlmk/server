@@ -396,6 +396,8 @@ QJsonObject DatabaseManager::deleteMemberFromGroup(const QJsonObject deleteMembe
     int creator_id = deleteMemberJson["creator_id"].toInt();
     QJsonObject deleteMemberResult;
     deleteMemberResult["flag"] = "delete_member";
+    deleteMemberResult["group_id"] = group_id;
+    deleteMemberResult["sender_id"] = creator_id;
 
     QSqlQuery query;
     query.prepare("SELECT COUNT(*) FROM group_chats WHERE group_id = :group_id AND created_by = :created_by");
@@ -425,6 +427,58 @@ QJsonObject DatabaseManager::deleteMemberFromGroup(const QJsonObject deleteMembe
         deleteMemberResult["error_code"] = 2;
     }
     return deleteMemberResult;
+}
+
+QJsonObject DatabaseManager::addMemberToGroup(const QJsonObject addMemberJson)
+{
+    int user_id = addMemberJson["id"].toInt();
+    int group_id = addMemberJson["group_id"].toInt();
+    int admin_id = addMemberJson["admin_id"].toInt();
+    QJsonObject addMemberResult;
+    addMemberResult["flag"] = "add_group_members";
+    addMemberResult["group_id"] = group_id;
+    addMemberResult["sender_id"] = admin_id;
+
+    QJsonArray newMembers = addMemberJson["members"].toArray();
+
+    QList<int> idsMembers;
+    QJsonArray addedMembers;
+    for (const QJsonValue &value : newMembers) {
+        QJsonObject memberObject = value.toObject();
+        int id = memberObject["id"].toInt();
+        idsMembers.append(id);
+    }
+    for(int id : idsMembers) {
+        QSqlQuery checkQuery;
+        checkQuery.prepare("SELECT COUNT(*) FROM group_members WHERE group_id = :group_id AND user_id = :user_id");
+        checkQuery.bindValue(":group_id", group_id);
+        checkQuery.bindValue(":user_id", id);
+        if (!checkQuery.exec() || !checkQuery.next()) {
+            qWarning() << "Failed exec check query: " << checkQuery.lastError().text();
+            continue;
+        }
+
+        int count = checkQuery.value(0).toInt();
+        if (count == 0) {
+            QSqlQuery query;
+            query.prepare("INSERT INTO group_members (group_id, user_id) VALUES (:group_id, :user_id)");
+            query.bindValue(":group_id", group_id);
+            query.bindValue(":user_id", id);
+
+            if(!query.exec()) {
+                qWarning() << "Failed to insert into group_members(add new Member):" << query.lastError().text();
+            } else {
+                QJsonObject member;
+                member["avatar_url"] = getAvatarUrl(id);
+                member["id"] = id;
+                member["status"] = "member";
+                member["username"] = getUserLogin(id);
+                addedMembers.append(member);
+            }
+        }
+    }
+    addMemberResult["addedMembers"] = addedMembers;
+    return addMemberResult;
 }
 
 void DatabaseManager::saveFileToDatabase(const QString &fileUrl)

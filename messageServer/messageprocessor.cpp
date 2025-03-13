@@ -48,12 +48,11 @@ void MessageProcessor::sendMessageToActiveSockets(QJsonObject json, ChatNetworkM
     }
 }
 
-void MessageProcessor::sendGroupMessageToActiveSockets(QJsonObject json, ChatNetworkManager *manager, int message_id, QList<int> groupMembersIds)
+void MessageProcessor::sendGroupMessageToActiveSockets(QJsonObject json, ChatNetworkManager *manager, QList<int> groupMembersIds)
 {
     qDebug() << "sendGroupMessageToActiveSockets starts";
     int sender_id = json["sender_id"].toInt();
     qDebug() << "sender_id: " << sender_id;
-    json["message_id"] = message_id;
     json["time"] = QDateTime::currentDateTime().toString("HH:mm");
 
     QList<ClientHandler*> clients = manager->getClients();
@@ -92,7 +91,9 @@ void MessageProcessor::groupMessageProcess(QJsonObject &json, ChatNetworkManager
             message_id = DatabaseManager::instance().saveMessageToDatabase(0, sender_id,group_id, message, "", "group");
         }
     }
-    sendGroupMessageToActiveSockets(json, manager, message_id, groupMembersIds);
+
+    json["message_id"] = message_id;
+    sendGroupMessageToActiveSockets(json, manager, groupMembersIds);
 }
 
 QJsonObject MessageProcessor::createMessageJson(QJsonObject json, int message_id, int dialog_id)

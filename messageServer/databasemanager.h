@@ -35,6 +35,7 @@ public:
     QJsonObject getGroupInformation(QJsonObject json);
     QJsonObject getDialogsInformation(QJsonObject json);
     QJsonObject deleteMemberFromGroup(const QJsonObject deleteMemberJson);
+    QJsonObject addMemberToGroup(const QJsonObject addMemberJson);
 
     void saveFileToDatabase(const QString &fileUrl);
 
