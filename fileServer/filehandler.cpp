@@ -32,14 +32,18 @@ QJsonObject FileHandler::getAvatarFromServer(const QJsonObject &json)
 QJsonObject FileHandler::makeAvatarUrlProcessing(const QJsonObject &json)
 {
     QString avatarUrl = makeUrlProcessing(json);
-    int user_id = json["user_id"].toInt();
-    emit setAvatarInDatabase(avatarUrl,user_id);
+    int id = json["id"].toInt();
+    if(json["type"].toString() == "personal"){
+        emit setAvatarInDatabase(avatarUrl,id);
+    } else if(json["type"].toString() == "group"){
+        emit setGroupAvatarInDatabase(avatarUrl,id);
+    }
 
     QJsonObject avatarUrlJson;
     avatarUrlJson["flag"] = "avatarUrl";
-    avatarUrlJson["type"] = json["type"];
+    avatarUrlJson["type"] = json["type"].toString();
     avatarUrlJson["avatar_url"] = avatarUrl;
-    avatarUrlJson["user_id"] = user_id;
+    avatarUrlJson["id"] = id;
 
     return avatarUrlJson;
 }

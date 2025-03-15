@@ -10,8 +10,13 @@ ChatNetworkManager::ChatNetworkManager(QObject *parent) : QTcpServer(parent) {
 
         QObject::connect(this,&ChatNetworkManager::saveFileToDatabase,&DatabaseManager::instance(),&DatabaseManager::saveFileToDatabase);
         QObject::connect(this,&ChatNetworkManager::setAvatarInDatabase,&DatabaseManager::instance(),&DatabaseManager::setAvatarInDatabase);
+        QObject::connect(this,&ChatNetworkManager::setGroupAvatarInDatabase,&DatabaseManager::instance(),&DatabaseManager::setGroupAvatarInDatabase);
+
         QObject::connect(this,&ChatNetworkManager::personalMessageProcess,[](QJsonObject &json, ChatNetworkManager *manager) {
             MessageProcessor::personalMessageProcess(json, manager);
+        });
+        QObject::connect(this,&ChatNetworkManager::sendNewGroupAvatarUrlToActiveSockets,[](const QJsonObject &json, ChatNetworkManager *manager) {
+            MessageProcessor::sendNewGroupAvatarUrlToActiveSockets(json, manager);
         });
         QObject::connect(this, &ChatNetworkManager::createGroup,[this](const QJsonObject& json){
             DatabaseManager::instance().createGroup(json,this);

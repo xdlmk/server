@@ -24,6 +24,7 @@ public:
     void createGroupWithAvatarProcessing(QJsonObject &createGroupJson);
 signals:
     void setAvatarInDatabase(const QString& avatarUrl, const int& user_id);
+    void setGroupAvatarInDatabase(const QString& avatarUrl, const int& user_id);
     void saveFileToDatabase(const QString& fileUrl);
 
     void createGroup(const QJsonObject& createGroupJson);

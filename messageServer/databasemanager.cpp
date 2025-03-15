@@ -502,6 +502,18 @@ void DatabaseManager::setAvatarInDatabase(const QString &avatarUrl, const int &u
     }
 }
 
+void DatabaseManager::setGroupAvatarInDatabase(const QString &avatarUrl, const int &group_id)
+{
+    qDebug() << "setGroupAvatarInDatabase starts";
+    QSqlQuery query;
+    query.prepare("UPDATE group_chats SET avatar_url = :avatar_url WHERE group_id = :group_id;");
+    query.bindValue(":group_id", group_id);
+    query.bindValue(":avatar_url", avatarUrl);
+    if (!query.exec()) {
+        qDebug() << "Error execute sql query to setGroupAvatarInDatabase:" << query.lastError().text();
+    }
+}
+
 QString DatabaseManager::getAvatarUrl(const int &user_id) {
     qDebug() << "getAvatarUrl starts with id " + user_id;
     QSqlQuery query;

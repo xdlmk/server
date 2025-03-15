@@ -9,6 +9,7 @@ FileServer::FileServer(QObject *parent) : QTcpServer{parent} {
     }
     connect(&fileHandler,&FileHandler::saveFileToDatabase,this,&FileServer::saveFileToDatabase);
     connect(&fileHandler,&FileHandler::setAvatarInDatabase,this,&FileServer::setAvatarInDatabase);
+    connect(&fileHandler,&FileHandler::setGroupAvatarInDatabase,this,&FileServer::setGroupAvatarInDatabase);
     connect(&fileHandler,&FileHandler::createGroup,this,&FileServer::createGroup);
 }
 
@@ -66,7 +67,13 @@ void FileServer::sendData(const QJsonObject &sendJson)
 void FileServer::processClientRequest(const QJsonObject &json)
 {
     if (json["flag"].toString() == "avatarUrl") sendData(fileHandler.getAvatarFromServer(json));
-    else if (json["flag"].toString() == "newAvatarData") sendData(fileHandler.makeAvatarUrlProcessing(json));
+    else if (json["flag"].toString() == "newAvatarData") {
+        if(json["type"].toString() == "personal") {
+            sendData(fileHandler.makeAvatarUrlProcessing(json));
+        } else if(json["type"].toString() == "group") {
+            emit sendNewGroupAvatarUrlToActiveSockets(fileHandler.makeAvatarUrlProcessing(json));
+        }
+    }
     else if (json["flag"].toString() == "personal_file" || json["flag"].toString() == "group_file") {
         QString fileUrl = fileHandler.makeUrlProcessing(json);
         QJsonObject fileUrlJson;

@@ -40,6 +40,7 @@ public:
     void saveFileToDatabase(const QString &fileUrl);
 
     void setAvatarInDatabase(const QString &avatarUrl, const int &user_id);
+    void setGroupAvatarInDatabase(const QString &avatarUrl, const int &group_id);
     QString getAvatarUrl(const int& user_id);
     QString getGroupAvatarUrl(const int& group_id);
 

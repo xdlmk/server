@@ -20,6 +20,7 @@ public:
     static void sendMessageToActiveSockets(QJsonObject json, ChatNetworkManager *manager, int message_id, int dialog_id);
     static void sendGroupMessageToActiveSockets(QJsonObject json, ChatNetworkManager *manager, QList<int> groupMembersIds);
     static void groupMessageProcess(QJsonObject &json,ChatNetworkManager *manager);
+    static void sendNewGroupAvatarUrlToActiveSockets(const QJsonObject &json,ChatNetworkManager *manager);
 private:
     static QJsonObject createMessageJson(QJsonObject json, int message_id, int dialog_id);
     static void sendToClient(ClientHandler *client, QJsonObject& messageJson, bool isSender);
