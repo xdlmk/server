@@ -7,6 +7,8 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 
+#include <QThread>
+
 #include "chatnetworkmanager.h"
 #include "messageprocessor.h"
 
@@ -18,6 +20,7 @@ public:
     bool checkSocket(QTcpSocket *socket);
     bool setIdentifiers(const QString& login,const int& id);
     QString getLogin();
+    int getId();
 
     void sendJson(const QJsonObject &jsonToSend);
 signals:

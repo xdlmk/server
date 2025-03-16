@@ -9,6 +9,8 @@ FileServer::FileServer(QObject *parent) : QTcpServer{parent} {
     }
     connect(&fileHandler,&FileHandler::saveFileToDatabase,this,&FileServer::saveFileToDatabase);
     connect(&fileHandler,&FileHandler::setAvatarInDatabase,this,&FileServer::setAvatarInDatabase);
+    connect(&fileHandler,&FileHandler::setGroupAvatarInDatabase,this,&FileServer::setGroupAvatarInDatabase);
+    connect(&fileHandler,&FileHandler::createGroup,this,&FileServer::createGroup);
 }
 
 void FileServer::incomingConnection(qintptr handle) {
@@ -65,19 +67,32 @@ void FileServer::sendData(const QJsonObject &sendJson)
 void FileServer::processClientRequest(const QJsonObject &json)
 {
     if (json["flag"].toString() == "avatarUrl") sendData(fileHandler.getAvatarFromServer(json));
-    else if (json["flag"].toString() == "newAvatarData") sendData(fileHandler.makeAvatarUrlProcessing(json));
-    else if (json["flag"].toString() == "file") {
+    else if (json["flag"].toString() == "newAvatarData") {
+        if(json["type"].toString() == "personal") {
+            sendData(fileHandler.makeAvatarUrlProcessing(json));
+        } else if(json["type"].toString() == "group") {
+            emit sendNewGroupAvatarUrlToActiveSockets(fileHandler.makeAvatarUrlProcessing(json));
+        }
+    }
+    else if (json["flag"].toString() == "personal_file" || json["flag"].toString() == "group_file") {
         QString fileUrl = fileHandler.makeUrlProcessing(json);
         QJsonObject fileUrlJson;
-        fileUrlJson["flag"] = "fileUrl";
+        fileUrlJson["flag"] = json["flag"].toString()+"_url";
         fileUrlJson["fileUrl"] = fileUrl;
         sendData(fileUrlJson);
     }
     else if (json["flag"].toString() == "fileUrl") sendData(fileHandler.getFileFromUrlProcessing(json["fileUrl"].toString(),"fileData"));
     else if (json["flag"].toString() == "voiceFileUrl") sendData(fileHandler.getFileFromUrlProcessing(json["fileUrl"].toString(),"voiceFileData"));
-    else if(json["flag"].toString() == "voice_message") {
+    else if(json["flag"].toString() == "personal_voice_message") {
         QJsonObject voiceMessage = json;
         fileHandler.voiceMessageProcessing(voiceMessage);
         emit sendVoiceMessage(voiceMessage);
+    } else if(json["flag"].toString() == "group_voice_message") {
+        QJsonObject voiceMessage = json;
+        fileHandler.voiceMessageProcessing(voiceMessage);
+        emit sendVoiceMessage(voiceMessage);
+    } else if(json["flag"].toString() == "create_group") {
+        QJsonObject createGroupJson = json;
+        fileHandler.createGroupWithAvatarProcessing(createGroupJson);
     }
 }

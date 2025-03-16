@@ -14,6 +14,8 @@
 
 #include <QTcpSocket>
 
+#include "messageprocessor.h"
+
 class ChatNetworkManager;
 
 class DatabaseManager : public QObject {
@@ -27,25 +29,34 @@ public:
     QJsonObject regProcess(QJsonObject json);
     QJsonObject searchProcess(QJsonObject json);
     QJsonObject editProfileProcess(QJsonObject json);
-    QJsonObject getCurrentAvatarUrlById(const QJsonArray &idsArray);
-    QJsonObject updatingChatsProcess(QJsonObject json);
+    QJsonObject getCurrentAvatarUrlById(const QJsonObject &avatarsUpdateJson);
+    QJsonObject updatingChatsProcess(QJsonObject json, ChatNetworkManager *manager);
+    QJsonObject loadMessagesProcess(QJsonObject requestJson);
+    QJsonObject getGroupInformation(QJsonObject json);
+    QJsonObject getDialogsInformation(QJsonObject json);
+    QJsonObject deleteMemberFromGroup(const QJsonObject deleteMemberJson);
+    QJsonObject addMemberToGroup(const QJsonObject addMemberJson);
 
     void saveFileToDatabase(const QString &fileUrl);
 
     void setAvatarInDatabase(const QString &avatarUrl, const int &user_id);
+    void setGroupAvatarInDatabase(const QString &avatarUrl, const int &group_id);
     QString getAvatarUrl(const int& user_id);
+    QString getGroupAvatarUrl(const int& group_id);
+
+    QList<int> getGroupMembers(const int& group_id);
+    void createGroup(QJsonObject json, ChatNetworkManager *manager);
 
     int getOrCreateDialog(int sender_id, int receiver_id);
-    int saveMessageToDatabase(int dialogId, int senderId, int receiverId, const QString &message, const QString& fileUrl = "");
+    int saveMessageToDatabase(int dialogId, int senderId, int receiverId, const QString &message, const QString& fileUrl, const QString& flag);
 signals:
     void setIdentifiersForClient(QTcpSocket *socket, const QString &login, const int &id);
 
 private:
-    void processChatHistory(const QJsonArray &chatHistory, QJsonArray &jsonMessageArray);
-    void processUserLogin(QJsonObject json, QJsonArray &jsonMessageArray);
+    void getUserMessages(QJsonObject json, QJsonArray &jsonMessageArray, ChatNetworkManager *manager);
     int getUserId(const QString &userlogin);
     QList<int> getUserDialogs(int user_id);
-    void filterDialogs(QList<int> &dialogIds, const QJsonArray &dialogIdsArray);
+    QList<int> getUserGroups(int user_id);
     void appendMessageObject(QSqlQuery &query, QJsonArray &jsonMessageArray);
     QString getUserLogin(int user_id);
 

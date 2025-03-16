@@ -24,7 +24,10 @@ private slots:
 signals:
     void sendVoiceMessage(QJsonObject voiceJson);
     void setAvatarInDatabase(const QString& avatarUrl, const int& user_id);
+    void setGroupAvatarInDatabase(const QString& avatarUrl, const int& group_id);
     void saveFileToDatabase(const QString& fileUrl);
+    void createGroup(const QJsonObject& createGroupJson);
+    void sendNewGroupAvatarUrlToActiveSockets(const QJsonObject& json);
 private:
     void processClientRequest(const QJsonObject &json);
     QTcpSocket *socket;

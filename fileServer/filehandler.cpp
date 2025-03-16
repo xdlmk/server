@@ -6,7 +6,7 @@ FileHandler::FileHandler(QObject *parent) : QObject{parent} {
 
 QJsonObject FileHandler::getAvatarFromServer(const QJsonObject &json)
 {
-    qDebug() << "getAvatarFromServer starts";
+    qDebug() << "getAvatarFromServer starts with url " + json["avatar_url"].toString();
     QDir dir("uploads");
     if (!dir.exists()) {
         dir.mkpath(".");
@@ -21,6 +21,7 @@ QJsonObject FileHandler::getAvatarFromServer(const QJsonObject &json)
     }
     QJsonObject fileDataJson;
     fileDataJson["flag"] = "avatarData";
+    fileDataJson["type"] = json["type"].toString();
     fileDataJson["user_id"] = json["user_id"].toInt();
     fileDataJson["avatar_url"] = json["avatar_url"].toString();
     fileDataJson["avatarData"] = QString(fileData.toBase64());
@@ -31,20 +32,25 @@ QJsonObject FileHandler::getAvatarFromServer(const QJsonObject &json)
 QJsonObject FileHandler::makeAvatarUrlProcessing(const QJsonObject &json)
 {
     QString avatarUrl = makeUrlProcessing(json);
-    int user_id = json["user_id"].toInt();
-    emit setAvatarInDatabase(avatarUrl,user_id);
+    int id = json["id"].toInt();
+    if(json["type"].toString() == "personal"){
+        emit setAvatarInDatabase(avatarUrl,id);
+    } else if(json["type"].toString() == "group"){
+        emit setGroupAvatarInDatabase(avatarUrl,id);
+    }
 
     QJsonObject avatarUrlJson;
     avatarUrlJson["flag"] = "avatarUrl";
+    avatarUrlJson["type"] = json["type"].toString();
     avatarUrlJson["avatar_url"] = avatarUrl;
-    avatarUrlJson["user_id"] = user_id;
+    avatarUrlJson["id"] = id;
 
     return avatarUrlJson;
 }
 
 QString FileHandler::makeUrlProcessing(const QJsonObject &json)
 {
-    qDebug() << "makeUrlProcessing starts";
+    qDebug() << "makeUrlProcessing starts" ;
     QString fileName = json["fileName"].toString();
     QString fileExtension = json["fileExtension"].toString();
     QString fileDataBase64 = json["fileData"].toString();
@@ -118,4 +124,16 @@ void FileHandler::voiceMessageProcessing(QJsonObject &voiceJson)
     voiceJson["message"] = "";
 
     emit saveFileToDatabase(uniqueFileName);
+}
+
+void FileHandler::createGroupWithAvatarProcessing(QJsonObject &createGroupJson)
+{
+    QString fileUrl = makeUrlProcessing(createGroupJson);
+    createGroupJson.remove("fileData");
+    createGroupJson["avatar_url"] = fileUrl;
+    qDebug() << "createGroupWithAvatarProcessing json " << createGroupJson;
+    createGroupJson.remove("fileName");
+    createGroupJson.remove("fileExtension");
+
+    emit createGroup(createGroupJson);
 }

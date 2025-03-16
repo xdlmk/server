@@ -30,6 +30,11 @@ QString ClientHandler::getLogin()
     return login;
 }
 
+int ClientHandler::getId()
+{
+    return id;
+}
+
 void ClientHandler::readClient()
 {
     socket = qobject_cast<QTcpSocket*>(sender());
@@ -96,7 +101,19 @@ void ClientHandler::handleFlag(const QString &flag, QJsonObject &json, QTcpSocke
     else if(flag == "logout") ;
     else if(flag == "search") sendJson(DatabaseManager::instance().searchProcess(json));
     else if(flag == "personal_message") MessageProcessor::personalMessageProcess(json, manager);
-    else if(flag == "updating_chats") sendJson(DatabaseManager::instance().updatingChatsProcess(json));
+    else if(flag == "group_message") MessageProcessor::groupMessageProcess(json, manager);
+    else if(flag == "updating_chats") sendJson(DatabaseManager::instance().updatingChatsProcess(json, manager));
+    else if(flag == "chats_info") {
+        QJsonObject infoObject;
+        infoObject["flag"] = "chats_info";
+        infoObject["dialogs_info"] = DatabaseManager::instance().getDialogsInformation(json);
+        infoObject["groups_info"] = DatabaseManager::instance().getGroupInformation(json);
+        sendJson(infoObject);
+    } else if(flag == "delete_member") MessageProcessor::sendGroupMessageToActiveSockets(DatabaseManager::instance().deleteMemberFromGroup(json), manager, DatabaseManager::instance().getGroupMembers(json["group_id"].toInt()));
+    else if(flag == "add_group_members") MessageProcessor::sendGroupMessageToActiveSockets(DatabaseManager::instance().addMemberToGroup(json), manager, DatabaseManager::instance().getGroupMembers(json["group_id"].toInt()));
+    else if(flag == "load_messages") sendJson(DatabaseManager::instance().loadMessagesProcess(json));
     else if(flag == "edit") sendJson(DatabaseManager::instance().editProfileProcess(json));
-    else if(flag == "avatars_update") sendJson(DatabaseManager::instance().getCurrentAvatarUrlById(json["ids"].toArray()));
+    else if(flag == "avatars_update") sendJson(DatabaseManager::instance().getCurrentAvatarUrlById(json));
+    else if(flag == "create_group") DatabaseManager::instance().createGroup(json,manager);
+
 }
