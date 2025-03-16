@@ -592,14 +592,14 @@ void DatabaseManager::createGroup(QJsonObject json, ChatNetworkManager *manager)
     }
     QJsonObject groupCreateJson;
     groupCreateJson["flag"] = "group_message";
-    groupCreateJson["message"] = "Created this group";
+    groupCreateJson["message"] = "created this group";
 
     groupCreateJson["sender_login"] = getUserLogin(json["creator_id"].toInt());
     groupCreateJson["sender_id"] = json["creator_id"].toInt();
     groupCreateJson["group_name"] = json["groupName"].toString();
     groupCreateJson["group_id"] = groupId;
     groupCreateJson["group_avatar_url"] = json["avatar_url"].toString();
-    groupCreateJson["only_create"] = "true";
+    groupCreateJson["special_type"] = "create";
 
     MessageProcessor::groupMessageProcess(groupCreateJson,manager);
 }

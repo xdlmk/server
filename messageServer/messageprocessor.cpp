@@ -55,13 +55,12 @@ void MessageProcessor::sendGroupMessageToActiveSockets(QJsonObject json, ChatNet
     if(json.contains("sender_id")){
     sender_id = json["sender_id"].toInt();
     } else sender_id = -1;
-    qDebug() << "sender_id: " << sender_id;
     json["time"] = QDateTime::currentDateTime().toString("HH:mm");
 
     QList<ClientHandler*> clients = manager->getClients();
     for(ClientHandler *client : clients) {
         if(client->getId() == sender_id) {
-            sendToClient(client, json, true);
+            sendToClient(client, json, false);
         }
         if(groupMembersIds.contains(client->getId()) && sender_id != client->getId()) {
             sendToClient(client, json, false);
