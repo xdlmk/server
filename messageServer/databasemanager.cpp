@@ -218,11 +218,11 @@ QJsonObject DatabaseManager::getCurrentAvatarUrlById(const QJsonObject &avatarsU
     return avatarsUpdateJson;
 }
 
-QJsonObject DatabaseManager::updatingChatsProcess(QJsonObject json, ChatNetworkManager *manager) {
+QJsonObject DatabaseManager::updatingChatsProcess(QJsonObject json) {
     QJsonArray jsonMessageArray;
     QJsonObject updatingJson;
     updatingJson["flag"] = "updating_chats";
-    getUserMessages(json, jsonMessageArray, manager);
+    getUserMessages(json, jsonMessageArray);
 
     updatingJson["messages"] = jsonMessageArray;
     return updatingJson;
@@ -645,7 +645,7 @@ int DatabaseManager::saveMessageToDatabase(int dialogId, int senderId, int recei
     return query.lastInsertId().toInt();
 }
 
-void DatabaseManager::getUserMessages(QJsonObject json, QJsonArray &jsonMessageArray, ChatNetworkManager *manager) {
+void DatabaseManager::getUserMessages(QJsonObject json, QJsonArray &jsonMessageArray) {
     QString userlogin = json["userlogin"].toString();
     int user_id = getUserId(userlogin);
     if (user_id == -1) return;

@@ -102,7 +102,7 @@ void ClientHandler::handleFlag(const QString &flag, QJsonObject &json, QTcpSocke
     else if(flag == "search") sendJson(DatabaseManager::instance().searchProcess(json));
     else if(flag == "personal_message") MessageProcessor::personalMessageProcess(json, manager);
     else if(flag == "group_message") MessageProcessor::groupMessageProcess(json, manager);
-    else if(flag == "updating_chats") sendJson(DatabaseManager::instance().updatingChatsProcess(json, manager));
+    else if(flag == "updating_chats") sendJson(DatabaseManager::instance().updatingChatsProcess(json));
     else if(flag == "chats_info") {
         QJsonObject infoObject;
         infoObject["flag"] = "chats_info";
