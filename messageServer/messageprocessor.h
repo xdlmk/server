@@ -9,6 +9,8 @@
 
 #include "databasemanager.h"
 
+#include "Database/databaseconnector.h"
+
 class ChatNetworkManager;
 class ClientHandler;
 

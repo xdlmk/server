@@ -96,24 +96,25 @@ void ClientHandler::sendJson(const QJsonObject &jsonToSend)
 
 void ClientHandler::handleFlag(const QString &flag, QJsonObject &json, QTcpSocket *socket)
 {
-    if(flag == "login") sendJson(DatabaseManager::instance().loginProcess(json, manager, socket));
-    else if(flag == "reg")  sendJson(DatabaseManager::instance().regProcess(json));
+
+    if(flag == "login") sendJson(DatabaseConnector::instance().getUserManager()->loginUser(json,manager,socket)); //sendJson(DatabaseManager::instance().loginProcess(json, manager, socket));
+    else if(flag == "reg") sendJson(DatabaseConnector::instance().getUserManager()->registerUser(json)); // sendJson(DatabaseManager::instance().regProcess(json));
     else if(flag == "logout") ;
-    else if(flag == "search") sendJson(DatabaseManager::instance().searchProcess(json));
+    else if(flag == "search") sendJson(DatabaseConnector::instance().getUserManager()->searchUsers(json)); //sendJson(DatabaseManager::instance().searchProcess(json));
     else if(flag == "personal_message") MessageProcessor::personalMessageProcess(json, manager);
     else if(flag == "group_message") MessageProcessor::groupMessageProcess(json, manager);
-    else if(flag == "updating_chats") sendJson(DatabaseManager::instance().updatingChatsProcess(json));
+    else if(flag == "updating_chats") sendJson(DatabaseConnector::instance().getChatManager()->updatingChatsProcess(json)); //sendJson(DatabaseManager::instance().updatingChatsProcess(json));
     else if(flag == "chats_info") {
         QJsonObject infoObject;
         infoObject["flag"] = "chats_info";
-        infoObject["dialogs_info"] = DatabaseManager::instance().getDialogsInformation(json);
-        infoObject["groups_info"] = DatabaseManager::instance().getGroupInformation(json);
+        infoObject["dialogs_info"] = DatabaseConnector::instance().getChatManager()->getDialogInfo(json); // DatabaseManager::instance().getDialogsInformation(json);
+        infoObject["groups_info"] = DatabaseConnector::instance().getGroupManager()->getGroupInfo(json); //DatabaseManager::instance().getGroupInformation(json);
         sendJson(infoObject);
-    } else if(flag == "delete_member") MessageProcessor::sendGroupMessageToActiveSockets(DatabaseManager::instance().deleteMemberFromGroup(json), manager, DatabaseManager::instance().getGroupMembers(json["group_id"].toInt()));
-    else if(flag == "add_group_members") MessageProcessor::sendGroupMessageToActiveSockets(DatabaseManager::instance().addMemberToGroup(json), manager, DatabaseManager::instance().getGroupMembers(json["group_id"].toInt()));
-    else if(flag == "load_messages") sendJson(DatabaseManager::instance().loadMessagesProcess(json));
-    else if(flag == "edit") sendJson(DatabaseManager::instance().editProfileProcess(json));
-    else if(flag == "avatars_update") sendJson(DatabaseManager::instance().getCurrentAvatarUrlById(json));
-    else if(flag == "create_group") DatabaseManager::instance().createGroup(json,manager);
+    } else if(flag == "delete_member") MessageProcessor::sendGroupMessageToActiveSockets(DatabaseConnector::instance().getGroupManager()->removeMemberFromGroup(json), manager, DatabaseConnector::instance().getGroupManager()->getGroupMembers(json["group_id"].toInt())); //MessageProcessor::sendGroupMessageToActiveSockets(DatabaseManager::instance().deleteMemberFromGroup(json), manager, DatabaseManager::instance().getGroupMembers(json["group_id"].toInt()));
+    else if(flag == "add_group_members") MessageProcessor::sendGroupMessageToActiveSockets(DatabaseConnector::instance().getGroupManager()->addMemberToGroup(json), manager, DatabaseConnector::instance().getGroupManager()->getGroupMembers(json["group_id"].toInt())); //MessageProcessor::sendGroupMessageToActiveSockets(DatabaseManager::instance().addMemberToGroup(json), manager, DatabaseManager::instance().getGroupMembers(json["group_id"].toInt()));
+    else if(flag == "load_messages") sendJson(DatabaseConnector::instance().getChatManager()->loadMessages(json)); //sendJson(DatabaseManager::instance().loadMessagesProcess(json));
+    else if(flag == "edit") sendJson(DatabaseConnector::instance().getUserManager()->editUserProfile(json)); //sendJson(DatabaseManager::instance().editProfileProcess(json));
+    else if(flag == "avatars_update") sendJson(DatabaseConnector::instance().getUserManager()->getCurrentAvatarUrlById(json)); //sendJson(DatabaseManager::instance().getCurrentAvatarUrlById(json));
+    else if(flag == "create_group") DatabaseConnector::instance().getGroupManager()->createGroup(json,manager); //DatabaseManager::instance().createGroup(json,manager);
 
 }

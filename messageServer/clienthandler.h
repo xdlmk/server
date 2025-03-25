@@ -11,6 +11,7 @@
 
 #include "chatnetworkmanager.h"
 #include "messageprocessor.h"
+#include "Database/databaseconnector.h"
 
 class ClientHandler : public QObject {
     Q_OBJECT

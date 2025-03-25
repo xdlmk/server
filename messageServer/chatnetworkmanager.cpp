@@ -6,11 +6,12 @@ ChatNetworkManager::ChatNetworkManager(QObject *parent) : QTcpServer(parent) {
         qDebug() <<"Unable to start the server: " << this->errorString();
     } else {
         qDebug() << "Server started on host " << this->serverAddress().toString() <<" port " <<this->serverPort();
-        DatabaseManager::instance().connectToDB();
+        DatabaseConnector::instance();
+        //DatabaseManager::instance().connectToDB();
 
-        QObject::connect(this,&ChatNetworkManager::saveFileToDatabase,&DatabaseManager::instance(),&DatabaseManager::saveFileToDatabase);
-        QObject::connect(this,&ChatNetworkManager::setAvatarInDatabase,&DatabaseManager::instance(),&DatabaseManager::setAvatarInDatabase);
-        QObject::connect(this,&ChatNetworkManager::setGroupAvatarInDatabase,&DatabaseManager::instance(),&DatabaseManager::setGroupAvatarInDatabase);
+        QObject::connect(this,&ChatNetworkManager::saveFileToDatabase,DatabaseConnector::instance().getFileManager(),&FileManager::saveFileRecord);
+        QObject::connect(this,&ChatNetworkManager::setAvatarInDatabase,DatabaseConnector::instance().getUserManager(),&UserManager::setUserAvatar);
+        QObject::connect(this,&ChatNetworkManager::setGroupAvatarInDatabase,DatabaseConnector::instance().getGroupManager(),&GroupManager::setGroupAvatar);
 
         QObject::connect(this,&ChatNetworkManager::personalMessageProcess,[](QJsonObject &json, ChatNetworkManager *manager) {
             MessageProcessor::personalMessageProcess(json, manager);
@@ -19,7 +20,8 @@ ChatNetworkManager::ChatNetworkManager(QObject *parent) : QTcpServer(parent) {
             MessageProcessor::sendNewGroupAvatarUrlToActiveSockets(json, manager);
         });
         QObject::connect(this, &ChatNetworkManager::createGroup,[this](const QJsonObject& json){
-            DatabaseManager::instance().createGroup(json,this);
+            DatabaseConnector::instance().getGroupManager()->createGroup(json,this);
+            //DatabaseManager::instance().createGroup(json,this);
         });
     }
 }
