@@ -11,7 +11,7 @@ ChatNetworkManager::ChatNetworkManager(QObject *parent) : QTcpServer(parent) {
 
         QObject::connect(this,&ChatNetworkManager::saveFileToDatabase,DatabaseConnector::instance().getFileManager(),&FileManager::saveFileRecord);
         QObject::connect(this,&ChatNetworkManager::setAvatarInDatabase,DatabaseConnector::instance().getUserManager(),&UserManager::setUserAvatar);
-        QObject::connect(this,&ChatNetworkManager::setGroupAvatarInDatabase,DatabaseConnector::instance().getGroupManager(),&GroupManager::setGroupAvatar);
+        QObject::connect(this,&ChatNetworkManager::setGroupAvatarInDatabase,DatabaseConnector::instance().getGroupManager().get(),&GroupManager::setGroupAvatar);
 
         QObject::connect(this,&ChatNetworkManager::personalMessageProcess,[](QJsonObject &json, ChatNetworkManager *manager) {
             MessageProcessor::personalMessageProcess(json, manager);

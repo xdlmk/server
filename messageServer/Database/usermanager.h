@@ -13,9 +13,10 @@
 #include <QSqlError>
 #include <QTcpSocket>
 
-#include "../chatnetworkmanager.h"
+#include "groupmanager.h"
 
 class DatabaseConnector;
+class ChatNetworkManager;
 
 class UserManager : public QObject
 {

@@ -1,5 +1,6 @@
 #include "groupmanager.h"
 #include "databaseconnector.h"
+#include "../chatnetworkmanager.h"
 
 GroupManager::GroupManager(DatabaseConnector *dbConnector, QObject *parent)
     : QObject{parent} , databaseConnector(dbConnector)

@@ -8,6 +8,8 @@
 
 #include <QSqlQuery>
 
+#include "groupmanager.h"
+
 class DatabaseConnector;
 
 class ChatManager : public QObject

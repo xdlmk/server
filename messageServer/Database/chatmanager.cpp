@@ -23,31 +23,34 @@ QJsonObject ChatManager::getDialogInfo(const QJsonObject &json)
         params[":dialog_id"] = dialog_id;
         params[":user_id"] = user_id;
         QSqlQuery query;
-        if (!databaseConnector->executeQuery(query,"SELECT CASE WHEN user1_id = :user_id THEN user2_id ELSE user1_id END AS second_user_id FROM dialogs WHERE dialog_id = :dialog_id",params) && query.next()) {
-            int second_user_id = query.value(0).toInt();
+        qDebug() << "Executing query with params:" << params;
+        if (databaseConnector->executeQuery(query,"SELECT CASE WHEN user1_id = :user_id THEN user2_id ELSE user1_id END AS second_user_id FROM dialogs WHERE dialog_id = :dialog_id",params)) {
+            if(query.next()){
+                int second_user_id = query.value(0).toInt();
 
-            QSqlQuery userQuery;
-            QMap<QString, QVariant> userParams;
-            userParams[":second_user_id"] = second_user_id;
-            if (databaseConnector->executeQuery(userQuery, "SELECT * FROM users WHERE id_user = :second_user_id", userParams) && userQuery.next()) {
-                int id_user = userQuery.value(0).toInt();
-                QString username = userQuery.value(1).toString();
-                QString userlogin = userQuery.value(2).toString();
-                QString phone_number = userQuery.value(4).toString();
-                QString avatar_url = userQuery.value(5).toString();
-                QDateTime created_at = userQuery.value(6).toDateTime();
+                QSqlQuery userQuery;
+                QMap<QString, QVariant> userParams;
+                userParams[":second_user_id"] = second_user_id;
+                if (databaseConnector->executeQuery(userQuery, "SELECT * FROM users WHERE id_user = :second_user_id", userParams) && userQuery.next()) {
+                    int id_user = userQuery.value(0).toInt();
+                    QString username = userQuery.value(1).toString();
+                    QString userlogin = userQuery.value(2).toString();
+                    QString phone_number = userQuery.value(4).toString();
+                    QString avatar_url = userQuery.value(5).toString();
+                    QDateTime created_at = userQuery.value(6).toDateTime();
 
-                dialogsInfoJson["user_id"] = id_user;
-                dialogsInfoJson["username"] = username;
-                dialogsInfoJson["userlogin"] = userlogin;
-                dialogsInfoJson["phone_number"] = phone_number;
-                dialogsInfoJson["avatar_url"] = avatar_url;
-                dialogsInfoJson["created_at"] = created_at.toString();
-            } else {
-                qWarning() << "User with id: " << second_user_id << " not found";
-            }
+                    dialogsInfoJson["user_id"] = id_user;
+                    dialogsInfoJson["username"] = username;
+                    dialogsInfoJson["userlogin"] = userlogin;
+                    dialogsInfoJson["phone_number"] = phone_number;
+                    dialogsInfoJson["avatar_url"] = avatar_url;
+                    dialogsInfoJson["created_at"] = created_at.toString();
+                } else {
+                    qWarning() << "User with id: " << second_user_id << " not found";
+                }
+            } else qWarning() << "Dialog with id:" << dialog_id << " not found in database";
         } else {
-            qWarning() << "Dialog with id:" << dialog_id << " not found";
+            qWarning() << "Query exec return false: " << query.lastError().text();
         }
 
         dialogsInfoArray.append(dialogsInfoJson);

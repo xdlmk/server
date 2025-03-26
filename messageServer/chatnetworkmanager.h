@@ -4,7 +4,6 @@
 #include <QObject>
 #include <QTcpServer>
 #include <QTcpSocket>
-#include "databasemanager.h"
 
 #include "Database/databaseconnector.h"
 

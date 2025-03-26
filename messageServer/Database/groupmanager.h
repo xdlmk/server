@@ -6,10 +6,11 @@
 #include <QJsonObject>
 #include <QJsonArray>
 
-#include "../chatnetworkmanager.h"
 #include "../messageprocessor.h"
 
 class DatabaseConnector;
+class ChatNetworkManager;
+
 class GroupManager : public QObject
 {
     Q_OBJECT

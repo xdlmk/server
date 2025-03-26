@@ -9,10 +9,10 @@
 #include <QDebug>
 
 #include "usermanager.h"
-#include "chatmanager.h"
-#include "groupmanager.h"
 #include "filemanager.h"
 
+class GroupManager;
+class ChatManager;
 class DatabaseConnector : public QObject
 {
     Q_OBJECT
@@ -24,15 +24,15 @@ public:
     bool executeQuery(QSqlQuery &query, const QString &queryStr, const QMap<QString, QVariant> &params = {});//
 
     UserManager *getUserManager();//
-    ChatManager *getChatManager();//
-    GroupManager *getGroupManager();//
+    std::unique_ptr<ChatManager> &getChatManager();//
     FileManager *getFileManager();//
+    std::unique_ptr<GroupManager> &getGroupManager();//
 
 private:
     UserManager userManager;
-    ChatManager chatManager;
-    GroupManager groupManager;
+    std::unique_ptr<ChatManager> chatManager;
     FileManager fileManager;
+    std::unique_ptr<GroupManager> groupManager;
 
     QSqlDatabase db;
 
