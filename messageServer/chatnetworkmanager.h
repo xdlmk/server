@@ -5,8 +5,6 @@
 #include <QTcpServer>
 #include <QTcpSocket>
 
-#include "Database/databaseconnector.h"
-
 class ClientHandler;
 
 class ChatNetworkManager : public QTcpServer {

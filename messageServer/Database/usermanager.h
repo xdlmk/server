@@ -13,8 +13,6 @@
 #include <QSqlError>
 #include <QTcpSocket>
 
-#include "groupmanager.h"
-
 class DatabaseConnector;
 class ChatNetworkManager;
 
@@ -24,17 +22,17 @@ class UserManager : public QObject
 public:
     explicit UserManager(DatabaseConnector *dbConnector, QObject *parent = nullptr);
 
-    QJsonObject loginUser(QJsonObject json, ChatNetworkManager *manager, QTcpSocket *socket);  // DatabaseManager::loginProcess
-    QJsonObject registerUser(const QJsonObject &json);  // DatabaseManager::regProcess
+    QJsonObject loginUser(QJsonObject json, ChatNetworkManager *manager, QTcpSocket *socket);
+    QJsonObject registerUser(const QJsonObject &json);
     QJsonObject searchUsers(const QJsonObject &json);
-    QJsonObject editUserProfile(const QJsonObject &dataEditProfile);  // DatabaseManager::editProfileProcess
-    QJsonObject getCurrentAvatarUrlById(const QJsonObject &avatarsUpdate);// DatabaseManager::getCurrentAvatarUrlById
+    QJsonObject editUserProfile(const QJsonObject &dataEditProfile);
+    QJsonObject getCurrentAvatarUrlById(const QJsonObject &avatarsUpdate);
 
-    int getUserId(const QString &userlogin);  // DatabaseManager::getUserId
-    QString getUserLogin(int user_id);  // DatabaseManager::getUserLogin
+    int getUserId(const QString &userlogin);
+    QString getUserLogin(int user_id);
 
-    void setUserAvatar(const QString &avatarUrl, int user_id);  // DatabaseManager::setAvatarInDatabase
-    QString getUserAvatar(int user_id);  // DatabaseManager::getAvatarUrl
+    void setUserAvatar(const QString &avatarUrl, int user_id);
+    QString getUserAvatar(int user_id);
 private:
     QString hashPassword(const QString &password);
     bool checkPassword(const QString &enteredPassword, const QString &storedHash);

@@ -12,7 +12,7 @@ class FileManager : public QObject
 public:
     explicit FileManager(DatabaseConnector *dbConnector, QObject *parent = nullptr);
 
-    void saveFileRecord(const QString &fileUrl);  // DatabaseManager::saveFileToDatabase
+    void saveFileRecord(const QString &fileUrl);
 
 private:
     DatabaseConnector *databaseConnector;

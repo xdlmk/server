@@ -1,5 +1,8 @@
 #include "usermanager.h"
+
 #include "databaseconnector.h"
+#include "groupmanager.h"
+
 #include "../chatnetworkmanager.h"
 
 UserManager::UserManager(DatabaseConnector *dbConnector, QObject *parent)

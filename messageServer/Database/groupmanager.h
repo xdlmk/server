@@ -6,7 +6,7 @@
 #include <QJsonObject>
 #include <QJsonArray>
 
-#include "../messageprocessor.h"
+#include "usermanager.h"
 
 class DatabaseConnector;
 class ChatNetworkManager;
@@ -17,14 +17,14 @@ class GroupManager : public QObject
 public:
     explicit GroupManager(DatabaseConnector *dbConnector, QObject *parent = nullptr);
 
-    void createGroup(const QJsonObject &json, ChatNetworkManager *manager);  // DatabaseManager::createGroup
-    QJsonObject getGroupInfo(const QJsonObject &json);  // DatabaseManager::getGroupInformation
-    QList<int> getGroupMembers(int group_id);  // DatabaseManager::getGroupMembers
-    QJsonObject addMemberToGroup(const QJsonObject &addMemberJson);  // DatabaseManager::addMemberToGroup
-    QJsonObject removeMemberFromGroup(const QJsonObject &removeMemberJson);  // DatabaseManager::deleteMemberFromGroup
+    void createGroup(const QJsonObject &json, ChatNetworkManager *manager);
+    QJsonObject getGroupInfo(const QJsonObject &json);
+    QList<int> getGroupMembers(int group_id);
+    QJsonObject addMemberToGroup(const QJsonObject &addMemberJson);
+    QJsonObject removeMemberFromGroup(const QJsonObject &removeMemberJson);
 
-    void setGroupAvatar(const QString &avatarUrl, int group_id);  // DatabaseManager::setGroupAvatarInDatabase
-    QString getGroupAvatar(int group_id);  // DatabaseManager::getGroupAvatarUrl
+    void setGroupAvatar(const QString &avatarUrl, int group_id);
+    QString getGroupAvatar(int group_id);
     QList<int> getUserGroups(int user_id);
     QString getGroupName(int group_id);
 

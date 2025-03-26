@@ -1,6 +1,12 @@
 #include "messageprocessor.h"
+
 #include "chatnetworkmanager.h"
 #include "clienthandler.h"
+
+#include "Database/databaseconnector.h"
+#include "Database/chatmanager.h"
+#include "Database/usermanager.h"
+#include "Database/groupmanager.h"
 
 MessageProcessor::MessageProcessor(QObject *parent)
     : QObject{parent}
@@ -18,20 +24,20 @@ void MessageProcessor::personalMessageProcess(QJsonObject &json,ChatNetworkManag
     QString message =  json["message"].toString();
 
 
-    QString receiver_avatar_url = DatabaseConnector::instance().getUserManager()->getUserAvatar(receiver_id); //DatabaseManager::instance().getAvatarUrl(receiver_id);
-    QString sender_avatar_url = DatabaseConnector::instance().getUserManager()->getUserAvatar(sender_id); //DatabaseManager::instance().getAvatarUrl(sender_id);
+    QString receiver_avatar_url = DatabaseConnector::instance().getUserManager()->getUserAvatar(receiver_id);
+    QString sender_avatar_url = DatabaseConnector::instance().getUserManager()->getUserAvatar(sender_id);
     json["receiver_avatar_url"] = receiver_avatar_url;
     json["sender_avatar_url"] = sender_avatar_url;
 
 
-    int dialog_id = DatabaseConnector::instance().getChatManager()->getOrCreateDialog(sender_id, receiver_id); //DatabaseManager::instance().getOrCreateDialog(sender_id, receiver_id);
+    int dialog_id = DatabaseConnector::instance().getChatManager()->getOrCreateDialog(sender_id, receiver_id);
     int message_id;
 
     if(json.contains("fileUrl")) {
         QString fileUrl =  json["fileUrl"].toString();
-        message_id = DatabaseConnector::instance().getChatManager()->saveMessage(dialog_id, sender_id,receiver_id, message, fileUrl, "personal"); //DatabaseManager::instance().saveMessageToDatabase(dialog_id, sender_id,receiver_id, message, fileUrl, "personal");
+        message_id = DatabaseConnector::instance().getChatManager()->saveMessage(dialog_id, sender_id,receiver_id, message, fileUrl, "personal");
     } else {
-        message_id = DatabaseConnector::instance().getChatManager()->saveMessage(dialog_id, sender_id,receiver_id, message, "" , "personal"); //DatabaseManager::instance().saveMessageToDatabase(dialog_id, sender_id,receiver_id, message, "" , "personal");
+        message_id = DatabaseConnector::instance().getChatManager()->saveMessage(dialog_id, sender_id,receiver_id, message, "" , "personal");
     }
     sendMessageToActiveSockets(json, manager, message_id, dialog_id);
 }
@@ -77,18 +83,18 @@ void MessageProcessor::groupMessageProcess(QJsonObject &json, ChatNetworkManager
     int sender_id =  json["sender_id"].toInt();
     QString message =  json["message"].toString();
 
-    QList<int> groupMembersIds = DatabaseConnector::instance().getGroupManager()->getGroupMembers(group_id); //DatabaseManager::instance().getGroupMembers(group_id);
+    QList<int> groupMembersIds = DatabaseConnector::instance().getGroupManager()->getGroupMembers(group_id);
     int message_id = 0;
 
     if(json["flag"].toString() != "group_info"){
-        QString sender_avatar_url = DatabaseConnector::instance().getUserManager()->getUserAvatar(sender_id); //DatabaseManager::instance().getAvatarUrl(sender_id);
+        QString sender_avatar_url = DatabaseConnector::instance().getUserManager()->getUserAvatar(sender_id);
         json["sender_avatar_url"] = sender_avatar_url;
 
         if(json.contains("fileUrl")) {
             QString fileUrl =  json["fileUrl"].toString();
-            message_id = DatabaseConnector::instance().getChatManager()->saveMessage(0, sender_id,group_id, message, fileUrl, "group"); //DatabaseManager::instance().saveMessageToDatabase(0, sender_id,group_id, message, fileUrl, "group");
+            message_id = DatabaseConnector::instance().getChatManager()->saveMessage(0, sender_id,group_id, message, fileUrl, "group");
         } else {
-            message_id = DatabaseConnector::instance().getChatManager()->saveMessage(0, sender_id,group_id, message, "", "group"); //DatabaseManager::instance().saveMessageToDatabase(0, sender_id,group_id, message, "", "group");
+            message_id = DatabaseConnector::instance().getChatManager()->saveMessage(0, sender_id,group_id, message, "", "group");
         }
     }
 
@@ -98,7 +104,7 @@ void MessageProcessor::groupMessageProcess(QJsonObject &json, ChatNetworkManager
 
 void MessageProcessor::sendNewGroupAvatarUrlToActiveSockets(const QJsonObject &json, ChatNetworkManager *manager)
 {
-    QList<int> groupMembersIds = DatabaseConnector::instance().getGroupManager()->getGroupMembers(json["id"].toInt()); //DatabaseManager::instance().getGroupMembers(json["id"].toInt());
+    QList<int> groupMembersIds = DatabaseConnector::instance().getGroupManager()->getGroupMembers(json["id"].toInt());
     QJsonObject jsonToSend = json;
     sendGroupMessageToActiveSockets(jsonToSend, manager, groupMembersIds);
 }

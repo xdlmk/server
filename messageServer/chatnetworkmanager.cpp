@@ -1,5 +1,12 @@
 #include "chatnetworkmanager.h"
+
 #include "clienthandler.h"
+
+#include "Database/databaseconnector.h"
+#include "Database/usermanager.h"
+#include "Database/chatmanager.h"
+#include "Database/groupmanager.h"
+#include "Database/filemanager.h"
 
 ChatNetworkManager::ChatNetworkManager(QObject *parent) : QTcpServer(parent) {
     if(!this->listen(QHostAddress::Any,2020)) {
@@ -7,10 +14,9 @@ ChatNetworkManager::ChatNetworkManager(QObject *parent) : QTcpServer(parent) {
     } else {
         qDebug() << "Server started on host " << this->serverAddress().toString() <<" port " <<this->serverPort();
         DatabaseConnector::instance();
-        //DatabaseManager::instance().connectToDB();
 
         QObject::connect(this,&ChatNetworkManager::saveFileToDatabase,DatabaseConnector::instance().getFileManager(),&FileManager::saveFileRecord);
-        QObject::connect(this,&ChatNetworkManager::setAvatarInDatabase,DatabaseConnector::instance().getUserManager(),&UserManager::setUserAvatar);
+        QObject::connect(this,&ChatNetworkManager::setAvatarInDatabase,DatabaseConnector::instance().getUserManager().get(),&UserManager::setUserAvatar);
         QObject::connect(this,&ChatNetworkManager::setGroupAvatarInDatabase,DatabaseConnector::instance().getGroupManager().get(),&GroupManager::setGroupAvatar);
 
         QObject::connect(this,&ChatNetworkManager::personalMessageProcess,[](QJsonObject &json, ChatNetworkManager *manager) {
@@ -21,7 +27,6 @@ ChatNetworkManager::ChatNetworkManager(QObject *parent) : QTcpServer(parent) {
         });
         QObject::connect(this, &ChatNetworkManager::createGroup,[this](const QJsonObject& json){
             DatabaseConnector::instance().getGroupManager()->createGroup(json,this);
-            //DatabaseManager::instance().createGroup(json,this);
         });
     }
 }

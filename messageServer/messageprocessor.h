@@ -7,10 +7,6 @@
 #include <QJsonDocument>
 #include <QList>
 
-#include "Database/databaseconnector.h"
-#include "Database/groupmanager.h"
-#include "Database/chatmanager.h"
-
 class ChatNetworkManager;
 class ClientHandler;
 

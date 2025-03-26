@@ -1,4 +1,5 @@
 #include "chatmanager.h"
+
 #include "databaseconnector.h"
 
 

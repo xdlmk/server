@@ -1,6 +1,8 @@
 #include "databaseconnector.h"
+
 #include "groupmanager.h"
 #include "chatmanager.h"
+#include "usermanager.h"
 
 DatabaseConnector &DatabaseConnector::instance(QObject *parent) {
     static DatabaseConnector instance(parent);
@@ -8,11 +10,11 @@ DatabaseConnector &DatabaseConnector::instance(QObject *parent) {
 }
 
 DatabaseConnector::DatabaseConnector(QObject *parent)
-    : QObject{parent}, userManager(this),
-    fileManager(this)
+    : QObject{parent}, fileManager(this)
 {
     groupManager = std::make_unique<GroupManager>(this);
     chatManager = std::make_unique<ChatManager>(this);
+    userManager = std::make_unique<UserManager>(this);
     while(!connectToDatabase()) {
         qDebug() << "Connect to database failed";
     }
@@ -53,7 +55,7 @@ bool DatabaseConnector::executeQuery(QSqlQuery &query, const QString &queryStr, 
     return true;
 }
 
-UserManager *DatabaseConnector::getUserManager() { return &userManager; }
+std::unique_ptr<UserManager> &DatabaseConnector::getUserManager() { return userManager; }
 
 std::unique_ptr<ChatManager> &DatabaseConnector::getChatManager() { return chatManager; }
 

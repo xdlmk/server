@@ -1,4 +1,5 @@
 #include "filemanager.h"
+
 #include "databaseconnector.h"
 
 FileManager::FileManager(DatabaseConnector *dbConnector, QObject *parent)

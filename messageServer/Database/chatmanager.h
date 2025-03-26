@@ -18,18 +18,18 @@ class ChatManager : public QObject
 public:
     explicit ChatManager(DatabaseConnector *dbConnector, QObject *parent = nullptr);
 
-    QJsonObject getDialogInfo(const QJsonObject &json);  // DatabaseManager::getDialogsInformation
-    int getOrCreateDialog(int sender_id, int receiver_id);  // DatabaseManager::getOrCreateDialog
+    QJsonObject getDialogInfo(const QJsonObject &json);
+    int getOrCreateDialog(int sender_id, int receiver_id);
 
-    QJsonObject updatingChatsProcess(QJsonObject json);// DatabaseManager::updatingChatsProcess
+    QJsonObject updatingChatsProcess(QJsonObject json);
 
-    int saveMessage(int dialogId, int senderId, int receiverId, const QString &message, const QString &fileUrl, const QString &flag);  // DatabaseManager::saveMessageToDatabase
-    QJsonObject loadMessages(const QJsonObject &requestJson);  // DatabaseManager::loadMessagesProcess
+    int saveMessage(int dialogId, int senderId, int receiverId, const QString &message, const QString &fileUrl, const QString &flag);
+    QJsonObject loadMessages(const QJsonObject &requestJson);
 
 private:
     void getUserMessages(QJsonObject json, QJsonArray &jsonMessageArray);
     QList<int> getUserDialogs(int user_id);
-    void appendMessageObject(QSqlQuery &query, QJsonArray &jsonMessageArray);  // DatabaseManager::appendMessageObject
+    void appendMessageObject(QSqlQuery &query, QJsonArray &jsonMessageArray);
 
     DatabaseConnector *databaseConnector;
 };
