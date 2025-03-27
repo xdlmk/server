@@ -12,6 +12,8 @@
 
 #include "FileHandler.h"
 
+#include "../Utils/logger.h"
+
 class FileServer : public QTcpServer {
     Q_OBJECT
 public:
@@ -32,6 +34,8 @@ private:
     void processClientRequest(const QJsonObject &json);
     QTcpSocket *socket;
     FileHandler fileHandler;
+
+    Logger &logger;
 };
 
 #endif // FILESERVER_H

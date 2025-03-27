@@ -7,7 +7,9 @@
 
 GroupManager::GroupManager(DatabaseConnector *dbConnector, QObject *parent)
     : QObject{parent} , databaseConnector(dbConnector)
-{}
+{
+    logger = Logger::instance();
+}
 
 void GroupManager::createGroup(const QJsonObject &json, ChatNetworkManager *manager)
 {
@@ -110,7 +112,7 @@ QList<int> GroupManager::getGroupMembers(int group_id)
             members.append(queryMembers.value(0).toInt());
         }
     } else {
-        qDebug() << "Database error: " << queryMembers.lastError().text();
+        logger.log(Logger::WARN,"groupmanager.cpp::saveFileRecord", "Query exec error: " + queryMembers.lastError().text());
     }
     return members;
 }
@@ -190,15 +192,15 @@ QJsonObject GroupManager::removeMemberFromGroup(const QJsonObject &removeMemberJ
         databaseConnector->executeQuery(query, "DELETE FROM group_members WHERE user_id = :user_id AND group_id = :group_id",deleteUserParams);
 
         if (query.numRowsAffected() > 0) {
-            qDebug() << "Member delete success id: " << user_id_deletion << " for group_id =" << group_id;
+            logger.log(Logger::DEBUG,"groupmanager.cpp::removeMemberFromGroup", "Member delete success id: " + user_id_deletion + " for group_id =" + group_id);
             removeMemberResult["deleted_user_id"] = user_id_deletion;
             removeMemberResult["error_code"] = 0;
         } else {
-            qDebug() << "User with user_id: " << user_id_deletion << "not a member group with group_id: " << group_id;
+            logger.log(Logger::DEBUG,"groupmanager.cpp::removeMemberFromGroup", "User with user_id: " + user_id_deletion + "not a member group with group_id: " + group_id);
             removeMemberResult["error_code"] = 1;
         }
     } else {
-        qDebug() << "User with id: " << creator_id << " not the admin of the group with id: " << group_id;
+        logger.log(Logger::DEBUG,"groupmanager.cpp::removeMemberFromGroup", "User with id: " + creator_id + " not the admin of the group with id: " + group_id);
         removeMemberResult["error_code"] = 2;
     }
     return removeMemberResult;
@@ -211,19 +213,19 @@ void GroupManager::setGroupAvatar(const QString &avatarUrl, int group_id)
     params[":avatar_url"] = avatarUrl;
     QSqlQuery query;
     if (!databaseConnector->executeQuery(query,"UPDATE group_chats SET avatar_url = :avatar_url WHERE group_id = :group_id;",params)) {
-        qDebug() << "Error execute sql query to setGroupAvatarInDatabase:" << query.lastError().text();
+        logger.log(Logger::WARN,"groupmanager.cpp::setGroupAvatar", "Error execute sql query: " + query.lastError().text());
     }
 }
 
 QString GroupManager::getGroupAvatar(int group_id)
 {
-    qDebug() << "getGroupAvatarUrl starts with id " + QString::number(group_id);
+    logger.log(Logger::DEBUG,"groupmanager.cpp::getGroupAvatar", "Method starts with id:  " + QString::number(group_id));
     QMap<QString, QVariant> params;
     params[":group_id"] = group_id;
     QSqlQuery query;
     if (databaseConnector->executeQuery(query,"SELECT avatar_url FROM group_chats WHERE group_id = :group_id",params) && query.next()) {
         return query.value(0).toString();
-    } else qDebug() << "query getGroupAvatarUrl error: " << query.lastError().text();
+    } else logger.log(Logger::WARN,"groupmanager.cpp::getGroupAvatar", "Error execute sql query: " + query.lastError().text());
     return "";
 }
 
@@ -241,7 +243,7 @@ QList<int> GroupManager::getUserGroups(int user_id)
                 groupIds.append(groupId);
             }
         }
-    } else qDebug() << "Error getting groups for user_id: " << user_id <<" with error: "<< query.lastError().text();
+    } else logger.log(Logger::WARN,"groupmanager.cpp::getUserGroups", "Error getting groups for user_id: " + user_id + " with error: " + query.lastError().text());
     return groupIds;
 }
 

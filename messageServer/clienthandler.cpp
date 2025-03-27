@@ -7,6 +7,7 @@
 
 ClientHandler::ClientHandler(quintptr handle, ChatNetworkManager *manager, QObject *parent)
     : QObject{parent}, socket(new QTcpSocket(this)) {
+    logger = Logger::instance();
     if(socket->setSocketDescriptor(handle)) {
         connect(socket, &QTcpSocket::readyRead, this, &ClientHandler::readClient);
         connect(socket, &QTcpSocket::disconnected, this, &ClientHandler::disconnectClient);

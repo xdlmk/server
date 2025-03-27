@@ -10,6 +10,8 @@
 
 #include "filemanager.h"
 
+#include "../Utils/logger.h"
+
 class GroupManager;
 class ChatManager;
 class UserManager;
@@ -36,7 +38,7 @@ private:
 
     QSqlDatabase db;
 
-signals:
+    Logger &logger;
 };
 
 #endif // DATABASECONNECTOR_H

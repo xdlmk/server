@@ -5,7 +5,9 @@
 
 ChatManager::ChatManager(DatabaseConnector *dbConnector, QObject *parent)
     : QObject{parent} , databaseConnector(dbConnector)
-{}
+{
+    logger = Logger::instance();
+}
 
 QJsonObject ChatManager::getDialogInfo(const QJsonObject &json)
 {
@@ -24,7 +26,6 @@ QJsonObject ChatManager::getDialogInfo(const QJsonObject &json)
         params[":dialog_id"] = dialog_id;
         params[":user_id"] = user_id;
         QSqlQuery query;
-        qDebug() << "Executing query with params:" << params;
         if (databaseConnector->executeQuery(query,"SELECT CASE WHEN user1_id = :user_id THEN user2_id ELSE user1_id END AS second_user_id FROM dialogs WHERE dialog_id = :dialog_id",params)) {
             if(query.next()){
                 int second_user_id = query.value(0).toInt();
@@ -106,7 +107,7 @@ int ChatManager::saveMessage(int dialogId, int senderId, int receiverId, const Q
     params[":content"] = message;
     params[":fileUrl"] = fileUrl;
     if (!databaseConnector->executeQuery(query,queryStr,params)) {
-        qDebug() << "Error exec query:" << query.lastError().text();
+        logger.log(Logger::WARN,"chatmanager.cpp::saveMessage", "Error exec query: " + query.lastError().text());
         return -1;
     }
     return query.lastInsertId().toInt();
@@ -136,7 +137,7 @@ QJsonObject ChatManager::loadMessages(const QJsonObject &requestJson)
         queryStr = "SELECT message_id, content, media_url, timestamp, sender_id FROM messages WHERE group_id = :group_id ORDER BY timestamp DESC LIMIT 50 OFFSET :offset";
     }
 
-    if (!databaseConnector->executeQuery(query,queryStr,params)) qDebug() << "Fail execute query (loadMessagesProcess): " << query.lastError().text();
+    if (!databaseConnector->executeQuery(query,queryStr,params)) logger.log(Logger::WARN,"chatmanager.cpp::loadMessagesProcess", "Error exec query: " + query.lastError().text());
     while (query.next()) {
         if (type == "personal") {
             appendMessageObject(query, jsonMessageArray);
@@ -182,7 +183,7 @@ void ChatManager::getUserMessages(QJsonObject json, QJsonArray &jsonMessageArray
         params[":dialog_id"] = dialog_id;
 
         if (!databaseConnector->executeQuery(query, "SELECT message_id, content, media_url, timestamp, sender_id, receiver_id FROM messages WHERE dialog_id = :dialog_id ORDER BY timestamp DESC LIMIT 50", params)) {
-            qDebug() << "Error query execution (select message in getUserMessages):" << query.lastError().text();
+            logger.log(Logger::WARN,"chatmanager.cpp::getUserMessages", "Error exec query: " + query.lastError().text());
             continue;
         }
         while (query.next()) {
@@ -196,7 +197,7 @@ void ChatManager::getUserMessages(QJsonObject json, QJsonArray &jsonMessageArray
         params[":group_id"] = group_id;
 
         if (!databaseConnector->executeQuery(query, "SELECT message_id, content, media_url, timestamp, sender_id FROM messages WHERE group_id = :group_id ORDER BY timestamp DESC LIMIT 50", params)) {
-            qDebug() << "Error query execution (select message in getUserMessages):" << query.lastError().text();
+            logger.log(Logger::WARN,"chatmanager.cpp::getUserMessages", "Error exec query: " + query.lastError().text());
             continue;
         }
 
@@ -237,7 +238,7 @@ QList<int> ChatManager::getUserDialogs(int user_id)
             }
         }
     } else {
-        qDebug() << "Error getting dialogs for user_id: " << user_id <<" with error: "<< query.lastError().text();
+        logger.log(Logger::WARN,"chatmanager.cpp::getUserDialogs", "Error getting dialogs for user_id: " + QString::number(user_id) + " with error: " + query.lastError().text());
     }
     return dialogIds;
 }

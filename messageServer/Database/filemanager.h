@@ -4,6 +4,8 @@
 #include <QObject>
 #include <QString>
 
+#include "../Utils/logger.h"
+
 class DatabaseConnector;
 
 class FileManager : public QObject
@@ -16,6 +18,8 @@ public:
 
 private:
     DatabaseConnector *databaseConnector;
+
+    Logger &logger;
 };
 
 #endif // FILEMANAGER_H

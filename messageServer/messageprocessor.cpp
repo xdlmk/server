@@ -10,7 +10,9 @@
 
 MessageProcessor::MessageProcessor(QObject *parent)
     : QObject{parent}
-{}
+{
+    logger = Logger::instance();
+}
 
 void MessageProcessor::personalMessageProcess(QJsonObject &json,ChatNetworkManager *manager)
 {

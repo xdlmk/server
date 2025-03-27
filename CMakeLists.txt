@@ -26,6 +26,8 @@ add_executable(Server
 
     fileServer/fileserver.h fileServer/fileserver.cpp
     fileServer/filehandler.h fileServer/filehandler.cpp
+
+    Utils/logger.h Utils/logger.cpp
 )
 
 target_link_libraries(Server

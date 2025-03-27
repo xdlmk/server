@@ -4,7 +4,9 @@
 
 FileManager::FileManager(DatabaseConnector *dbConnector, QObject *parent)
     : QObject{parent} , databaseConnector(dbConnector)
-{}
+{
+    logger = Logger::instance();
+}
 
 void FileManager::saveFileRecord(const QString &fileUrl)
 {
@@ -13,6 +15,6 @@ void FileManager::saveFileRecord(const QString &fileUrl)
     QSqlQuery query;
 
     if (!databaseConnector->executeQuery(query, "INSERT INTO `files` (`file_url`) VALUES (:fileUrl);", params)) {
-        qDebug() << "Error execute sql query:" << query.lastError().text();
+        logger.log(Logger::WARN,"filemanager.cpp::saveFileRecord", "Query exec error: " + query.lastError().text());
     }
 }

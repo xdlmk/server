@@ -11,6 +11,8 @@
 #include <QJsonObject>
 #include <QDebug>
 
+#include "../Utils/logger.h"
+
 class FileHandler : public QObject {
     Q_OBJECT
 public:
@@ -29,6 +31,8 @@ signals:
 
     void createGroup(const QJsonObject& createGroupJson);
 
+private:
+    Logger &logger;
 };
 
 #endif // FILEHANDLER_H

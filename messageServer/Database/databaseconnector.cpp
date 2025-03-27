@@ -12,13 +12,14 @@ DatabaseConnector &DatabaseConnector::instance(QObject *parent) {
 DatabaseConnector::DatabaseConnector(QObject *parent)
     : QObject{parent}, fileManager(this)
 {
+    logger = Logger::instance();
     groupManager = std::make_unique<GroupManager>(this);
     chatManager = std::make_unique<ChatManager>(this);
     userManager = std::make_unique<UserManager>(this);
     while(!connectToDatabase()) {
-        qDebug() << "Connect to database failed";
+        logger.log(Logger::WARN,"databaseconnector.cpp::constructor", "Connect to database failed with error: " + db.lastError().text());
     }
-    qDebug() << "Database connected";
+    logger.log(Logger::DEBUG,"databaseconnector.cpp::constructor","Database connected");
 }
 
 bool DatabaseConnector::connectToDatabase()
@@ -31,7 +32,6 @@ bool DatabaseConnector::connectToDatabase()
     db.setPassword("admin-password");
 
     if(!db.open()) {
-        qDebug() << "Error connecting to database:" << db.lastError().text();
         return false;
     }
     return true;
@@ -48,7 +48,7 @@ bool DatabaseConnector::executeQuery(QSqlQuery &query, const QString &queryStr, 
     }
 
     if (!query.exec()) {
-        qDebug() << "Query exec error: " << query.lastError().text() << " for query: " << queryStr;
+        logger.log(Logger::WARN,"databaseconnector.cpp::executeQuery", "Query exec error: " + query.lastError().text() + " for query: " + queryStr);
         return false;
     }
 

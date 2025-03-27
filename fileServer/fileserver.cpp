@@ -2,6 +2,7 @@
 #include "qjsonobject.h"
 
 FileServer::FileServer(QObject *parent) : QTcpServer{parent} {
+    logger = Logger::instance();
     if(!this->listen(QHostAddress::Any,2021)) {
         qInfo() <<"Unable to start the FileServer: " << this->errorString();
     } else {
@@ -38,7 +39,7 @@ void FileServer::readClient()
 
     QJsonDocument doc = QJsonDocument::fromJson(data);
     if (doc.isNull()) {
-        qDebug() << "Error with JSON doc check, doc is null";
+        logger.log(Logger::DEBUG,"fileserver.cpp::readClient", "Error with JSON doc check, doc is null");
         blockSize = 0;
         return;
     }
@@ -51,7 +52,7 @@ void FileServer::readClient()
 
 void FileServer::sendData(const QJsonObject &sendJson)
 {
-    qDebug() << "Flag FileJson to send:" << sendJson["flag"].toString();
+    logger.log(Logger::DEBUG,"fileserver.cpp::sendData", "Flag FileJson to send: " + sendJson["flag"].toString());
     QJsonDocument sendDoc(sendJson);
     QByteArray jsonDataOut = sendDoc.toJson(QJsonDocument::Compact);
     QByteArray data;
@@ -60,7 +61,7 @@ void FileServer::sendData(const QJsonObject &sendJson)
     out<<quint32(jsonDataOut.size());
     out.writeRawData(jsonDataOut.data(),jsonDataOut.size());
 
-    if(socket->write(data)) qInfo() << "File sent successfully";
+    socket->write(data);
     socket->flush();
 }
 

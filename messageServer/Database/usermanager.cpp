@@ -7,7 +7,9 @@
 
 UserManager::UserManager(DatabaseConnector *dbConnector, QObject *parent)
     : QObject{parent} , databaseConnector(dbConnector)
-{}
+{
+    logger = Logger::instance();
+}
 
 QJsonObject UserManager::loginUser(QJsonObject json, ChatNetworkManager *manager, QTcpSocket *socket)
 {
@@ -20,7 +22,7 @@ QJsonObject UserManager::loginUser(QJsonObject json, ChatNetworkManager *manager
     QSqlQuery query;
 
     if (!databaseConnector->executeQuery(query, "SELECT password_hash FROM users WHERE userlogin = :userlogin",params)) {
-        qDebug() << "Error executing query during password_hash:" << query.lastError().text();
+        logger.log(Logger::WARN,"usermanager.cpp::loginUser", "Error executing query during password_hash: " << query.lastError().text());
         jsonLogin["success"] = "error";
     } else {
         query.next();
@@ -43,7 +45,7 @@ QJsonObject UserManager::loginUser(QJsonObject json, ChatNetworkManager *manager
                     if(manager) manager->setIdentifiersForClient(socket,login,id);
                     else jsonLogin["success"] = "poor";
                 } else {
-                    qDebug() << "No user found with login:" << login;
+                    logger.log(Logger::DEBUG,"usermanager.cpp::loginUser", "No user found with login: " + login);
                     jsonLogin["success"] = "poor";
                 }
             }
@@ -63,7 +65,7 @@ QJsonObject UserManager::registerUser(const QJsonObject &json)
     params[":userlogin"] = login;
     QSqlQuery query;
     if (!databaseConnector->executeQuery(query,"SELECT COUNT(*) FROM users WHERE userlogin = :userlogin",params)) {
-        qDebug() << "Error executing query during registration(select count) :" << query.lastError().text();
+        logger.log(Logger::DEBUG,"usermanager.cpp::registerUser", "Error executing query during registration(select count): " + query.lastError().text());
         jsonReg["success"] = "error";
     } else {
         query.next();

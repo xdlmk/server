@@ -7,6 +7,8 @@
 #include <QJsonDocument>
 #include <QList>
 
+#include "../Utils/logger.h"
+
 class ChatNetworkManager;
 class ClientHandler;
 
@@ -22,6 +24,8 @@ public:
 private:
     static QJsonObject createMessageJson(QJsonObject json, int message_id, int dialog_id);
     static void sendToClient(ClientHandler *client, QJsonObject& messageJson, bool isSender);
+
+    Logger &logger;
 };
 
 #endif // MESSAGEPROCESSOR_H

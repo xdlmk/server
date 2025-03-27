@@ -9,6 +9,7 @@
 #include "Database/filemanager.h"
 
 ChatNetworkManager::ChatNetworkManager(QObject *parent) : QTcpServer(parent) {
+    logger = Logger::instance();
     if(!this->listen(QHostAddress::Any,2020)) {
         qDebug() <<"Unable to start the server: " << this->errorString();
     } else {

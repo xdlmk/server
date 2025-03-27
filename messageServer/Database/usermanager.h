@@ -13,6 +13,8 @@
 #include <QSqlError>
 #include <QTcpSocket>
 
+#include "../Utils/logger.h"
+
 class DatabaseConnector;
 class ChatNetworkManager;
 
@@ -38,6 +40,8 @@ private:
     bool checkPassword(const QString &enteredPassword, const QString &storedHash);
 
     DatabaseConnector *databaseConnector;
+
+    Logger &logger;
 };
 
 #endif // USERMANAGER_H

@@ -10,6 +10,8 @@
 
 #include "groupmanager.h"
 
+#include "../Utils/logger.h"
+
 class DatabaseConnector;
 
 class ChatManager : public QObject
@@ -32,6 +34,8 @@ private:
     void appendMessageObject(QSqlQuery &query, QJsonArray &jsonMessageArray);
 
     DatabaseConnector *databaseConnector;
+
+    Logger &logger;
 };
 
 #endif // CHATMANAGER_H

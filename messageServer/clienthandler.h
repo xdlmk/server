@@ -12,6 +12,8 @@
 #include "chatnetworkmanager.h"
 #include "messageprocessor.h"
 
+#include "../Utils/logger.h"
+
 class ClientHandler : public QObject {
     Q_OBJECT
 public:
@@ -35,6 +37,8 @@ private:
     QTcpSocket *socket;
 
     ChatNetworkManager * manager;
+
+    Logger &logger;
 };
 
 #endif // CLIENTHANDLER_H
