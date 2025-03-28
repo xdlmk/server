@@ -13,7 +13,7 @@
 #include <QSqlError>
 #include <QTcpSocket>
 
-#include "../Utils/logger.h"
+#include "../../Utils/logger.h"
 
 class DatabaseConnector;
 class ChatNetworkManager;
@@ -41,7 +41,7 @@ private:
 
     DatabaseConnector *databaseConnector;
 
-    Logger &logger;
+    Logger& logger;
 };
 
 #endif // USERMANAGER_H

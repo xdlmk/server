@@ -24,8 +24,6 @@ public:
 private:
     static QJsonObject createMessageJson(QJsonObject json, int message_id, int dialog_id);
     static void sendToClient(ClientHandler *client, QJsonObject& messageJson, bool isSender);
-
-    Logger &logger;
 };
 
 #endif // MESSAGEPROCESSOR_H

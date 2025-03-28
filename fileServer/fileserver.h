@@ -35,7 +35,7 @@ private:
     QTcpSocket *socket;
     FileHandler fileHandler;
 
-    Logger &logger;
+    Logger& logger;
 };
 
 #endif // FILESERVER_H

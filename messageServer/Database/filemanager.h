@@ -4,7 +4,7 @@
 #include <QObject>
 #include <QString>
 
-#include "../Utils/logger.h"
+#include "../../Utils/logger.h"
 
 class DatabaseConnector;
 
@@ -19,7 +19,7 @@ public:
 private:
     DatabaseConnector *databaseConnector;
 
-    Logger &logger;
+    Logger& logger;
 };
 
 #endif // FILEMANAGER_H

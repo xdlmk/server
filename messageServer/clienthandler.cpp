@@ -6,12 +6,11 @@
 #include "Database/groupmanager.h"
 
 ClientHandler::ClientHandler(quintptr handle, ChatNetworkManager *manager, QObject *parent)
-    : QObject{parent}, socket(new QTcpSocket(this)) {
-    logger = Logger::instance();
+    : QObject{parent}, socket(new QTcpSocket(this)), logger(Logger::instance()) {
     if(socket->setSocketDescriptor(handle)) {
         connect(socket, &QTcpSocket::readyRead, this, &ClientHandler::readClient);
         connect(socket, &QTcpSocket::disconnected, this, &ClientHandler::disconnectClient);
-        qDebug() << "Client connect: " << handle;
+        logger.log(Logger::INFO,"clienthandler.cpp::constructor", "Client connect: " + handle);
         this->manager = manager;
     } else {
         delete socket;
@@ -58,7 +57,6 @@ void ClientHandler::readClient()
 
     QJsonDocument doc = QJsonDocument::fromJson(jsonData);
     if (doc.isNull()) {
-        qDebug() << "Invalid JSON-message received";
         blockSize = 0;
         return;
     }
@@ -84,7 +82,7 @@ void ClientHandler::disconnectClient()
 void ClientHandler::sendJson(const QJsonObject &jsonToSend)
 {
     QJsonDocument sendDoc(jsonToSend);
-    qDebug() << "JSON to send (compact):" << sendDoc.toJson(QJsonDocument::Compact);
+    logger.log(Logger::INFO,"clienthandler.cpp::sendJson", "JSON to send (compact):" + sendDoc.toJson(QJsonDocument::Compact));
     QByteArray jsonData = sendDoc.toJson(QJsonDocument::Compact);
 
     QByteArray bytes;

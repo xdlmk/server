@@ -4,10 +4,8 @@
 
 
 ChatManager::ChatManager(DatabaseConnector *dbConnector, QObject *parent)
-    : QObject{parent} , databaseConnector(dbConnector)
-{
-    logger = Logger::instance();
-}
+    : QObject{parent} , databaseConnector(dbConnector), logger(Logger::instance())
+{}
 
 QJsonObject ChatManager::getDialogInfo(const QJsonObject &json)
 {

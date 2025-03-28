@@ -1,8 +1,7 @@
 #include "fileserver.h"
 #include "qjsonobject.h"
 
-FileServer::FileServer(QObject *parent) : QTcpServer{parent} {
-    logger = Logger::instance();
+FileServer::FileServer(QObject *parent) : QTcpServer{parent}, logger(Logger::instance()) {
     if(!this->listen(QHostAddress::Any,2021)) {
         qInfo() <<"Unable to start the FileServer: " << this->errorString();
     } else {

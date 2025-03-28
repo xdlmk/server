@@ -32,7 +32,7 @@ signals:
     void createGroup(const QJsonObject& createGroupJson);
 
 private:
-    Logger &logger;
+    Logger& logger;
 };
 
 #endif // FILEHANDLER_H

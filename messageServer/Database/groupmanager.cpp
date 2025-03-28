@@ -6,10 +6,8 @@
 #include "../chatnetworkmanager.h"
 
 GroupManager::GroupManager(DatabaseConnector *dbConnector, QObject *parent)
-    : QObject{parent} , databaseConnector(dbConnector)
-{
-    logger = Logger::instance();
-}
+    : QObject{parent} , databaseConnector(dbConnector), logger(Logger::instance())
+{}
 
 void GroupManager::createGroup(const QJsonObject &json, ChatNetworkManager *manager)
 {
@@ -192,15 +190,15 @@ QJsonObject GroupManager::removeMemberFromGroup(const QJsonObject &removeMemberJ
         databaseConnector->executeQuery(query, "DELETE FROM group_members WHERE user_id = :user_id AND group_id = :group_id",deleteUserParams);
 
         if (query.numRowsAffected() > 0) {
-            logger.log(Logger::DEBUG,"groupmanager.cpp::removeMemberFromGroup", "Member delete success id: " + user_id_deletion + " for group_id =" + group_id);
+            logger.log(Logger::DEBUG,"groupmanager.cpp::removeMemberFromGroup", "Member delete success id: " + QString::number(user_id_deletion) + " for group_id =" + QString::number(group_id));
             removeMemberResult["deleted_user_id"] = user_id_deletion;
             removeMemberResult["error_code"] = 0;
         } else {
-            logger.log(Logger::DEBUG,"groupmanager.cpp::removeMemberFromGroup", "User with user_id: " + user_id_deletion + "not a member group with group_id: " + group_id);
+            logger.log(Logger::DEBUG,"groupmanager.cpp::removeMemberFromGroup", "User with user_id: " + QString::number(user_id_deletion) + "not a member group with group_id: " + QString::number(group_id));
             removeMemberResult["error_code"] = 1;
         }
     } else {
-        logger.log(Logger::DEBUG,"groupmanager.cpp::removeMemberFromGroup", "User with id: " + creator_id + " not the admin of the group with id: " + group_id);
+        logger.log(Logger::DEBUG,"groupmanager.cpp::removeMemberFromGroup", "User with id: " + QString::number(creator_id) + " not the admin of the group with id: " + QString::number(group_id));
         removeMemberResult["error_code"] = 2;
     }
     return removeMemberResult;
@@ -243,7 +241,7 @@ QList<int> GroupManager::getUserGroups(int user_id)
                 groupIds.append(groupId);
             }
         }
-    } else logger.log(Logger::WARN,"groupmanager.cpp::getUserGroups", "Error getting groups for user_id: " + user_id + " with error: " + query.lastError().text());
+    } else logger.log(Logger::WARN,"groupmanager.cpp::getUserGroups", "Error getting groups for user_id: " + QString::number(user_id) + " with error: " + query.lastError().text());
     return groupIds;
 }
 

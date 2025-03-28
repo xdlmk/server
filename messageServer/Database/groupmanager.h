@@ -8,7 +8,7 @@
 
 #include "usermanager.h"
 
-#include "../Utils/logger.h"
+#include "../../Utils/logger.h"
 
 class DatabaseConnector;
 class ChatNetworkManager;
@@ -33,7 +33,7 @@ public:
 private:
     DatabaseConnector *databaseConnector;
 
-    Logger &logger;
+    Logger& logger;
 };
 
 #endif // GROUPMANAGER_H

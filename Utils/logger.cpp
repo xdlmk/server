@@ -2,7 +2,7 @@
 #include <QDebug>
 
 Logger &Logger::instance(QObject *parent) {
-    static Logger instance(parent);
+    static Logger instance;
     return instance;
 }
 

@@ -8,12 +8,11 @@
 #include "Database/groupmanager.h"
 #include "Database/filemanager.h"
 
-ChatNetworkManager::ChatNetworkManager(QObject *parent) : QTcpServer(parent) {
-    logger = Logger::instance();
+ChatNetworkManager::ChatNetworkManager(QObject *parent) : QTcpServer(parent), logger(Logger::instance()) {
     if(!this->listen(QHostAddress::Any,2020)) {
-        qDebug() <<"Unable to start the server: " << this->errorString();
+        logger.log(Logger::FATAL,"chatnetoworkmanager.cpp::constructor", "Unable to start the server: " + this->errorString());
     } else {
-        qDebug() << "Server started on host " << this->serverAddress().toString() <<" port " <<this->serverPort();
+        logger.log(Logger::INFO,"chatnetoworkmanager.cpp::constructor", "Server started and listening adresses: " + this->serverAddress().toString() + " on port: " + this->serverPort());
         DatabaseConnector::instance();
 
         QObject::connect(this,&ChatNetworkManager::saveFileToDatabase,DatabaseConnector::instance().getFileManager(),&FileManager::saveFileRecord);
@@ -42,7 +41,7 @@ void ChatNetworkManager::setIdentifiersForClient(QTcpSocket *socket, const QStri
     for(ClientHandler* client : clients) {
         if(client->checkSocket(socket)) {
             client->setIdentifiers(login,id);
-            qDebug() << "Set login: " + login + ", set id: " + QString::number(id);
+            logger.log(Logger::INFO,"chatnetoworkmanager.cpp::setIdentifiersForClient", "Set login: "  + login + ", set id: " + QString::number(id));
             break;
         }
     }
@@ -59,5 +58,5 @@ void ChatNetworkManager::removeClient(ClientHandler *client)
 {
     clients.removeAll(client);
     client->deleteLater();
-    qDebug() << "Client disconnected and removed.";
+    logger.log(Logger::INFO,"chatnetoworkmanager.cpp::setIdentifiersForClient", "Client disconnected and removed.");
 }

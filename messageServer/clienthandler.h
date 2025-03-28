@@ -38,7 +38,7 @@ private:
 
     ChatNetworkManager * manager;
 
-    Logger &logger;
+    Logger& logger;
 };
 
 #endif // CLIENTHANDLER_H

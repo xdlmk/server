@@ -3,10 +3,8 @@
 #include "databaseconnector.h"
 
 FileManager::FileManager(DatabaseConnector *dbConnector, QObject *parent)
-    : QObject{parent} , databaseConnector(dbConnector)
-{
-    logger = Logger::instance();
-}
+    : QObject{parent} , databaseConnector(dbConnector), logger(Logger::instance())
+{}
 
 void FileManager::saveFileRecord(const QString &fileUrl)
 {

@@ -10,9 +10,8 @@ DatabaseConnector &DatabaseConnector::instance(QObject *parent) {
 }
 
 DatabaseConnector::DatabaseConnector(QObject *parent)
-    : QObject{parent}, fileManager(this)
+    : QObject{parent}, fileManager(this), logger(Logger::instance())
 {
-    logger = Logger::instance();
     groupManager = std::make_unique<GroupManager>(this);
     chatManager = std::make_unique<ChatManager>(this);
     userManager = std::make_unique<UserManager>(this);

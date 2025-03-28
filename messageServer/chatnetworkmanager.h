@@ -29,7 +29,7 @@ private:
     QList<ClientHandler*> clients;
     void removeClient(ClientHandler *client);
 
-    Logger &logger;
+    Logger& logger;
 };
 
 #endif // CHATNETWORKMANAGER_H

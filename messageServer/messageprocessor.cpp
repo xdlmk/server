@@ -10,9 +10,7 @@
 
 MessageProcessor::MessageProcessor(QObject *parent)
     : QObject{parent}
-{
-    logger = Logger::instance();
-}
+{}
 
 void MessageProcessor::personalMessageProcess(QJsonObject &json,ChatNetworkManager *manager)
 {
@@ -60,7 +58,7 @@ void MessageProcessor::sendMessageToActiveSockets(QJsonObject json, ChatNetworkM
 
 void MessageProcessor::sendGroupMessageToActiveSockets(QJsonObject json, ChatNetworkManager *manager, QList<int> groupMembersIds)
 {
-    qDebug() << "sendGroupMessageToActiveSockets starts";
+    Logger::instance().log(Logger::INFO,"messageprocessor.cpp::sendGroupMessageToActiveSockets", "Method starts");
     int sender_id;
     if(json.contains("sender_id")){
     sender_id = json["sender_id"].toInt();
@@ -80,7 +78,7 @@ void MessageProcessor::sendGroupMessageToActiveSockets(QJsonObject json, ChatNet
 
 void MessageProcessor::groupMessageProcess(QJsonObject &json, ChatNetworkManager *manager)
 {
-    qDebug() << "groupMessageProcess starts";
+    Logger::instance().log(Logger::INFO,"messageprocessor.cpp::groupMessageProcess", "Method starts");
     int group_id = json["group_id"].toInt();
     int sender_id =  json["sender_id"].toInt();
     QString message =  json["message"].toString();
@@ -135,7 +133,7 @@ QJsonObject MessageProcessor::createMessageJson(QJsonObject json, int message_id
 void MessageProcessor::sendToClient(ClientHandler *client, QJsonObject& messageJson, bool isSender)
 {
 
-    qDebug() << "sendToClient starts";
+    Logger::instance().log(Logger::INFO,"messageprocessor.cpp::sendToClient", "Method starts");
     if(isSender) {
         messageJson.remove("sender_login");
         messageJson.remove("sender_id");

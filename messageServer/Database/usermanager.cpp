@@ -6,10 +6,8 @@
 #include "../chatnetworkmanager.h"
 
 UserManager::UserManager(DatabaseConnector *dbConnector, QObject *parent)
-    : QObject{parent} , databaseConnector(dbConnector)
-{
-    logger = Logger::instance();
-}
+    : QObject{parent} , databaseConnector(dbConnector), logger(Logger::instance())
+{ }
 
 QJsonObject UserManager::loginUser(QJsonObject json, ChatNetworkManager *manager, QTcpSocket *socket)
 {
@@ -22,7 +20,7 @@ QJsonObject UserManager::loginUser(QJsonObject json, ChatNetworkManager *manager
     QSqlQuery query;
 
     if (!databaseConnector->executeQuery(query, "SELECT password_hash FROM users WHERE userlogin = :userlogin",params)) {
-        logger.log(Logger::WARN,"usermanager.cpp::loginUser", "Error executing query during password_hash: " << query.lastError().text());
+        logger.log(Logger::DEBUG,"usermanager.cpp::loginUser", "Error executing query during password_hash: " + query.lastError().text());
         jsonLogin["success"] = "error";
     } else {
         query.next();
@@ -65,18 +63,16 @@ QJsonObject UserManager::registerUser(const QJsonObject &json)
     params[":userlogin"] = login;
     QSqlQuery query;
     if (!databaseConnector->executeQuery(query,"SELECT COUNT(*) FROM users WHERE userlogin = :userlogin",params)) {
-        logger.log(Logger::DEBUG,"usermanager.cpp::registerUser", "Error executing query during registration(select count): " + query.lastError().text());
+        logger.log(Logger::DEBUG,"usermanager.cpp::registerUser", "Error executing SELECT query: " + query.lastError().text());
         jsonReg["success"] = "error";
     } else {
         query.next();
         int count = query.value(0).toInt();
         if (count > 0) {
-            qDebug() << "Exec = poor";
             jsonReg["success"] = "poor";
             jsonReg["errorMes"] = "This username is taken";
 
         } else {
-            qDebug() << "Exec = ok";
             jsonReg["success"] = "ok";
 
             QMap<QString, QVariant> insertParams;
@@ -85,7 +81,7 @@ QJsonObject UserManager::registerUser(const QJsonObject &json)
             jsonReg["name"] = json["login"];
             jsonReg["password"] = json["password"];
             if (!databaseConnector->executeQuery(query,"INSERT INTO `users` (`username`, `password_hash`, `userlogin`) VALUES (:username, :password_hash, :username);",insertParams)) {
-                qDebug() << "Error executing query during registration(insert):" << query.lastError().text();
+                logger.log(Logger::DEBUG,"usermanager.cpp::registerUser", "Error executing INSERT query: " + query.lastError().text());
                 jsonReg["success"] = "error";
                 jsonReg["errorMes"] = "Error with insert to database";
             }
@@ -116,7 +112,7 @@ QJsonObject UserManager::searchUsers(const QJsonObject &json)
             jsonArray.append(userObject);
         }
     } else {
-        qDebug() << "Error executing query during search: " << query.lastError().text();
+        logger.log(Logger::DEBUG,"usermanager.cpp::searchUsers", "Error executing query: " + query.lastError().text());
     }
 
     QJsonObject searchJson;
@@ -144,11 +140,7 @@ QJsonObject UserManager::editUserProfile(const QJsonObject &dataEditProfile)
     editResults["flag"] = "edit";
 
     if (!databaseConnector->executeQuery(query,"UPDATE users SET " + bindingValue + " = :" + bindingValue + " WHERE id_user = :id_user",params)) {
-        qDebug() << "Query execution error:" << query.lastError().text();
-        qDebug() << "Query execution error code:" << query.lastError().nativeErrorCode();
-
         if (query.lastError().text().contains("Duplicate entry") or query.lastError().nativeErrorCode() == "1062") {
-            qDebug() << "Error: Violation of uniqueness";
             editResults["status"] = "poor";
             editResults["error"] = "Unique error";
             return editResults;
@@ -204,7 +196,7 @@ int UserManager::getUserId(const QString &userlogin)
     if (databaseConnector->executeQuery(query,"SELECT id_user FROM users WHERE userlogin = :userlogin",params) && query.next()) {
         return query.value(0).toInt();
     }
-    qDebug() << "Could not find user_id for " << userlogin;
+    logger.log(Logger::DEBUG,"usermanager.cpp::getUserId", "UserId not found: " + userlogin);
     return -1;
 }
 
@@ -216,6 +208,7 @@ QString UserManager::getUserLogin(int user_id)
     if (databaseConnector->executeQuery(query,"SELECT userlogin FROM users WHERE id_user = :user_id",params) && query.next()) {
         return query.value(0).toString();
     }
+    logger.log(Logger::INFO,"usermanager.cpp::getUserLogin", "UserLogin not found: " + QString::number(user_id));
     return "";
 }
 
@@ -226,19 +219,19 @@ void UserManager::setUserAvatar(const QString &avatarUrl, int user_id)
     params[":avatar_url"] = avatarUrl;
     QSqlQuery query;
     if (!databaseConnector->executeQuery(query,"UPDATE users SET avatar_url = :avatar_url WHERE id_user = :id_user;",params)) {
-        qDebug() << "Error execute sql query to setAvatarInDatabase:" << query.lastError().text();
+        logger.log(Logger::DEBUG,"usermanager.cpp::setUserAvatar", "Error execute query: " + query.lastError().text());
     }
 }
 
 QString UserManager::getUserAvatar(int user_id)
 {
-    qDebug() << "getAvatarUrl starts with id " + QString::number(user_id);
+    logger.log(Logger::INFO,"usermanager.cpp::getUserAvatar", "Method starts with id: " + QString::number(user_id));
     QMap<QString, QVariant> params;
     params[":user_id"] = user_id;
     QSqlQuery query;
     if (databaseConnector->executeQuery(query,"SELECT avatar_url FROM users WHERE id_user = :user_id",params) && query.next()) {
         return query.value(0).toString();
-    } else qDebug() << "query getAvatarUrl error: " << query.lastError().text();
+    } else logger.log(Logger::DEBUG,"usermanager.cpp::getUserAvatar", "Error execute query: " + query.lastError().text());
     return "";
 }
 

@@ -1,8 +1,7 @@
 #include "filehandler.h"
 
-FileHandler::FileHandler(QObject *parent) : QObject{parent} {
-    logger = Logger::instance();
-}
+FileHandler::FileHandler(QObject *parent) : QObject{parent}, logger(Logger::instance())
+{}
 
 QJsonObject FileHandler::getAvatarFromServer(const QJsonObject &json)
 {
