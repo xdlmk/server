@@ -6,7 +6,7 @@ Logger &Logger::instance(QObject *parent) {
     return instance;
 }
 
-Logger::Logger(const QString &logFilePath) : logFile(logFilePath) {
+Logger::Logger(const QString &logFilePath) : logFile(logFilePath),status("standart") {
     if (!logFile.open(QIODevice::Append | QIODevice::Text)) {
         qWarning() << "Failed toopen log file:" << logFilePath;
     }
@@ -20,6 +20,8 @@ Logger::~Logger() {
 }
 
 void Logger::log(LogLevel level, const QString &module, const QString &message) {
+    if(status == "ErrorsOnly" && (level == Logger::INFO || level == Logger::DEBUG)) return;
+    if(status == "NoInfo" && level == Logger::INFO) return;
     QString levelString = getLevelString(level);
     QString logMessage = QString("%1 [%2] [%3] %4")
                              .arg(QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz"))

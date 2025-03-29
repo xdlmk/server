@@ -3,9 +3,9 @@
 
 FileServer::FileServer(QObject *parent) : QTcpServer{parent}, logger(Logger::instance()) {
     if(!this->listen(QHostAddress::Any,2021)) {
-        qInfo() <<"Unable to start the FileServer: " << this->errorString();
+        logger.log(Logger::FATAL,"fileserver.cpp::constructor", "Unable to start the FileServer: " + this->errorString());
     } else {
-        qInfo() << "FileServer started on host " << this->serverAddress().toString() <<" port " <<this->serverPort();
+        logger.log(Logger::INFO,"fileserver.cpp::constructor", "FileServer started and listening adresses: " + this->serverAddress().toString() + " on port: " + QString::number(this->serverPort()));
     }
     connect(&fileHandler,&FileHandler::saveFileToDatabase,this,&FileServer::saveFileToDatabase);
     connect(&fileHandler,&FileHandler::setAvatarInDatabase,this,&FileServer::setAvatarInDatabase);
@@ -66,33 +66,55 @@ void FileServer::sendData(const QJsonObject &sendJson)
 
 void FileServer::processClientRequest(const QJsonObject &json)
 {
-    if (json["flag"].toString() == "avatarUrl") sendData(fileHandler.getAvatarFromServer(json));
-    else if (json["flag"].toString() == "newAvatarData") {
-        if(json["type"].toString() == "personal") {
+    auto it = flagMap.find(json["flag"].toString().toStdString());
+    uint flagId = (it != flagMap.end()) ? it->second : 0;
+    switch (flagId) {
+    case 1:
+        sendData(fileHandler.getAvatarFromServer(json));
+        break;
+    case 2:
+        if (json["type"].toString() == "personal") {
             sendData(fileHandler.makeAvatarUrlProcessing(json));
-        } else if(json["type"].toString() == "group") {
+        } else if (json["type"].toString() == "group") {
             emit sendNewGroupAvatarUrlToActiveSockets(fileHandler.makeAvatarUrlProcessing(json));
         }
-    }
-    else if (json["flag"].toString() == "personal_file" || json["flag"].toString() == "group_file") {
-        QString fileUrl = fileHandler.makeUrlProcessing(json);
+        break;
+    case 3:
+    case 4: {
         QJsonObject fileUrlJson;
-        fileUrlJson["flag"] = json["flag"].toString()+"_url";
-        fileUrlJson["fileUrl"] = fileUrl;
+        fileUrlJson["flag"] = json["flag"].toString() + "_url";
+        fileUrlJson["fileUrl"] = fileHandler.makeUrlProcessing(json);
         sendData(fileUrlJson);
+        break;
     }
-    else if (json["flag"].toString() == "fileUrl") sendData(fileHandler.getFileFromUrlProcessing(json["fileUrl"].toString(),"fileData"));
-    else if (json["flag"].toString() == "voiceFileUrl") sendData(fileHandler.getFileFromUrlProcessing(json["fileUrl"].toString(),"voiceFileData"));
-    else if(json["flag"].toString() == "personal_voice_message") {
+    case 5:
+        sendData(fileHandler.getFileFromUrlProcessing(json["fileUrl"].toString(), "fileData"));
+        break;
+    case 6:
+        sendData(fileHandler.getFileFromUrlProcessing(json["fileUrl"].toString(), "voiceFileData"));
+        break;
+    case 7:
+    case 8: {
         QJsonObject voiceMessage = json;
         fileHandler.voiceMessageProcessing(voiceMessage);
         emit sendVoiceMessage(voiceMessage);
-    } else if(json["flag"].toString() == "group_voice_message") {
-        QJsonObject voiceMessage = json;
-        fileHandler.voiceMessageProcessing(voiceMessage);
-        emit sendVoiceMessage(voiceMessage);
-    } else if(json["flag"].toString() == "create_group") {
+        break;
+    }
+    case 9: {
         QJsonObject createGroupJson = json;
         fileHandler.createGroupWithAvatarProcessing(createGroupJson);
+        break;
+    }
+    default:
+        logger.log(Logger::WARN,"fileserver.cpp::processClientRequest", "Unknown flag: " + json["flag"].toString());
+        break;
     }
 }
+
+const std::unordered_map<std::string_view, uint> FileServer::flagMap = {
+    {"avatarUrl", 1}, {"newAvatarData", 2},
+    {"personal_file", 3}, {"group_file", 4},
+    {"fileUrl", 5}, {"voiceFileUrl", 6},
+    {"personal_voice_message", 7}, {"group_voice_message", 8},
+    {"create_group", 9}
+};

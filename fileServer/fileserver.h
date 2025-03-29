@@ -10,6 +10,9 @@
 #include <QJsonObject>
 #include <QDataStream>
 
+#include <unordered_map>
+#include <string_view>
+
 #include "FileHandler.h"
 
 #include "../Utils/logger.h"
@@ -36,6 +39,8 @@ private:
     FileHandler fileHandler;
 
     Logger& logger;
+
+    static const std::unordered_map<std::string_view, uint> flagMap;
 };
 
 #endif // FILESERVER_H

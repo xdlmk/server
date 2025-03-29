@@ -100,25 +100,73 @@ void ClientHandler::sendJson(const QJsonObject &jsonToSend)
 
 void ClientHandler::handleFlag(const QString &flag, QJsonObject &json, QTcpSocket *socket)
 {
+    auto it = flagMap.find(flag.toStdString());
+    uint flagId = (it != flagMap.end()) ? it->second : 0;
 
-    if(flag == "login") sendJson(DatabaseConnector::instance().getUserManager()->loginUser(json,manager,socket));
-    else if(flag == "reg") sendJson(DatabaseConnector::instance().getUserManager()->registerUser(json));
-    else if(flag == "logout") ;
-    else if(flag == "search") sendJson(DatabaseConnector::instance().getUserManager()->searchUsers(json));
-    else if(flag == "personal_message") MessageProcessor::personalMessageProcess(json, manager);
-    else if(flag == "group_message") MessageProcessor::groupMessageProcess(json, manager);
-    else if(flag == "updating_chats") sendJson(DatabaseConnector::instance().getChatManager()->updatingChatsProcess(json));
-    else if(flag == "chats_info") {
+    auto& db = DatabaseConnector::instance();
+    switch (flagId) {
+    case 1:
+        sendJson(db.getUserManager()->loginUser(json, manager, socket));
+        break;
+    case 2:
+        sendJson(db.getUserManager()->registerUser(json));
+        break;
+    case 3: break;
+    case 4:
+        sendJson(db.getUserManager()->searchUsers(json));
+        break;
+    case 5:
+        MessageProcessor::personalMessageProcess(json, manager);
+        break;
+    case 6:
+        MessageProcessor::groupMessageProcess(json, manager);
+        break;
+    case 7:
+        sendJson(db.getChatManager()->updatingChatsProcess(json));
+        break;
+    case 8: {
         QJsonObject infoObject;
         infoObject["flag"] = "chats_info";
-        infoObject["dialogs_info"] = DatabaseConnector::instance().getChatManager()->getDialogInfo(json);
-        infoObject["groups_info"] = DatabaseConnector::instance().getGroupManager()->getGroupInfo(json);
+        infoObject["dialogs_info"] = db.getChatManager()->getDialogInfo(json);
+        infoObject["groups_info"] = db.getGroupManager()->getGroupInfo(json);
         sendJson(infoObject);
-    } else if(flag == "delete_member") MessageProcessor::sendGroupMessageToActiveSockets(DatabaseConnector::instance().getGroupManager()->removeMemberFromGroup(json), manager, DatabaseConnector::instance().getGroupManager()->getGroupMembers(json["group_id"].toInt()));
-    else if(flag == "add_group_members") MessageProcessor::sendGroupMessageToActiveSockets(DatabaseConnector::instance().getGroupManager()->addMemberToGroup(json), manager, DatabaseConnector::instance().getGroupManager()->getGroupMembers(json["group_id"].toInt()));
-    else if(flag == "load_messages") sendJson(DatabaseConnector::instance().getChatManager()->loadMessages(json));
-    else if(flag == "edit") sendJson(DatabaseConnector::instance().getUserManager()->editUserProfile(json));
-    else if(flag == "avatars_update") sendJson(DatabaseConnector::instance().getUserManager()->getCurrentAvatarUrlById(json));
-    else if(flag == "create_group") DatabaseConnector::instance().getGroupManager()->createGroup(json,manager);
-
+        break;
+    }
+    case 9: {
+        QJsonObject rmJson = db.getGroupManager()->removeMemberFromGroup(json);
+        QList<int> members = db.getGroupManager()->getGroupMembers(json["group_id"].toInt());
+        MessageProcessor::sendGroupMessageToActiveSockets(rmJson, manager, members);
+        break;
+    }
+    case 10: {
+        QJsonObject amJson = db.getGroupManager()->addMemberToGroup(json);
+        QList<int> members = db.getGroupManager()->getGroupMembers(json["group_id"].toInt());
+        MessageProcessor::sendGroupMessageToActiveSockets(amJson, manager, members);
+        break;
+    }
+    case 11:
+        sendJson(db.getChatManager()->loadMessages(json));
+        break;
+    case 12:
+        sendJson(db.getUserManager()->editUserProfile(json));
+        break;
+    case 13:
+        sendJson(db.getUserManager()->getCurrentAvatarUrlById(json));
+        break;
+    case 14:
+        db.getGroupManager()->createGroup(json,manager);
+        break;
+    default:
+        logger.log(Logger::WARN,"clienthandler.cpp::handleFlag", "Unknown flag: " + flag);
+        break;
+    }
 }
+
+const std::unordered_map<std::string_view, uint> ClientHandler::flagMap = {
+    {"login", 1}, {"reg", 2}, {"logout", 3}, {"search", 4},
+    {"personal_message", 5}, {"group_message", 6},
+    {"updating_chats", 7}, {"chats_info", 8},
+    {"delete_member", 9}, {"add_group_members", 10},
+    {"load_messages", 11}, {"edit", 12},
+    {"avatars_update", 13}, {"create_group", 14}
+};

@@ -12,7 +12,7 @@ ChatNetworkManager::ChatNetworkManager(QObject *parent) : QTcpServer(parent), lo
     if(!this->listen(QHostAddress::Any,2020)) {
         logger.log(Logger::FATAL,"chatnetoworkmanager.cpp::constructor", "Unable to start the server: " + this->errorString());
     } else {
-        logger.log(Logger::INFO,"chatnetoworkmanager.cpp::constructor", "Server started and listening adresses: " + this->serverAddress().toString() + " on port: " + this->serverPort());
+        logger.log(Logger::INFO,"chatnetoworkmanager.cpp::constructor", "Server started and listening adresses: " + this->serverAddress().toString() + " on port: " + QString::number(this->serverPort()));
         DatabaseConnector::instance();
 
         QObject::connect(this,&ChatNetworkManager::saveFileToDatabase,DatabaseConnector::instance().getFileManager(),&FileManager::saveFileRecord);

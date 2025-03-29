@@ -18,7 +18,7 @@ public:
     };
 
     static Logger &instance(QObject *parent = nullptr);
-    explicit Logger(const QString &logFilePath = "app.log");
+    explicit Logger(const QString &logFilePath = "server.log");
     ~Logger();
 
     void log(LogLevel level, const QString &module, const QString &message);
@@ -27,6 +27,7 @@ private:
     QFile logFile;
     QTextStream logStream;
 
+    QString status;
     QString getLevelString(LogLevel level);
 };
 
