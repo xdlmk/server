@@ -1,16 +1,23 @@
 #include "chatnetworkmanager.h"
+
 #include "clienthandler.h"
 
-ChatNetworkManager::ChatNetworkManager(QObject *parent) : QTcpServer(parent) {
-    if(!this->listen(QHostAddress::Any,2020)) {
-        qDebug() <<"Unable to start the server: " << this->errorString();
-    } else {
-        qDebug() << "Server started on host " << this->serverAddress().toString() <<" port " <<this->serverPort();
-        DatabaseManager::instance().connectToDB();
+#include "Database/databaseconnector.h"
+#include "Database/usermanager.h"
+#include "Database/chatmanager.h"
+#include "Database/groupmanager.h"
+#include "Database/filemanager.h"
 
-        QObject::connect(this,&ChatNetworkManager::saveFileToDatabase,&DatabaseManager::instance(),&DatabaseManager::saveFileToDatabase);
-        QObject::connect(this,&ChatNetworkManager::setAvatarInDatabase,&DatabaseManager::instance(),&DatabaseManager::setAvatarInDatabase);
-        QObject::connect(this,&ChatNetworkManager::setGroupAvatarInDatabase,&DatabaseManager::instance(),&DatabaseManager::setGroupAvatarInDatabase);
+ChatNetworkManager::ChatNetworkManager(QObject *parent) : QTcpServer(parent), logger(Logger::instance()) {
+    if(!this->listen(QHostAddress::Any,2020)) {
+        logger.log(Logger::FATAL,"chatnetoworkmanager.cpp::constructor", "Unable to start the server: " + this->errorString());
+    } else {
+        logger.log(Logger::INFO,"chatnetoworkmanager.cpp::constructor", "Server started and listening adresses: " + this->serverAddress().toString() + " on port: " + QString::number(this->serverPort()));
+        DatabaseConnector::instance();
+
+        QObject::connect(this,&ChatNetworkManager::saveFileToDatabase,DatabaseConnector::instance().getFileManager(),&FileManager::saveFileRecord);
+        QObject::connect(this,&ChatNetworkManager::setAvatarInDatabase,DatabaseConnector::instance().getUserManager().get(),&UserManager::setUserAvatar);
+        QObject::connect(this,&ChatNetworkManager::setGroupAvatarInDatabase,DatabaseConnector::instance().getGroupManager().get(),&GroupManager::setGroupAvatar);
 
         QObject::connect(this,&ChatNetworkManager::personalMessageProcess,[](QJsonObject &json, ChatNetworkManager *manager) {
             MessageProcessor::personalMessageProcess(json, manager);
@@ -19,7 +26,7 @@ ChatNetworkManager::ChatNetworkManager(QObject *parent) : QTcpServer(parent) {
             MessageProcessor::sendNewGroupAvatarUrlToActiveSockets(json, manager);
         });
         QObject::connect(this, &ChatNetworkManager::createGroup,[this](const QJsonObject& json){
-            DatabaseManager::instance().createGroup(json,this);
+            DatabaseConnector::instance().getGroupManager()->createGroup(json,this);
         });
     }
 }
@@ -34,7 +41,7 @@ void ChatNetworkManager::setIdentifiersForClient(QTcpSocket *socket, const QStri
     for(ClientHandler* client : clients) {
         if(client->checkSocket(socket)) {
             client->setIdentifiers(login,id);
-            qDebug() << "Set login: " + login + ", set id: " + QString::number(id);
+            logger.log(Logger::INFO,"chatnetoworkmanager.cpp::setIdentifiersForClient", "Set login: "  + login + ", set id: " + QString::number(id));
             break;
         }
     }
@@ -51,5 +58,5 @@ void ChatNetworkManager::removeClient(ClientHandler *client)
 {
     clients.removeAll(client);
     client->deleteLater();
-    qDebug() << "Client disconnected and removed.";
+    logger.log(Logger::INFO,"chatnetoworkmanager.cpp::setIdentifiersForClient", "Client disconnected and removed.");
 }

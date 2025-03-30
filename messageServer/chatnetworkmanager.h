@@ -4,7 +4,8 @@
 #include <QObject>
 #include <QTcpServer>
 #include <QTcpSocket>
-#include "databasemanager.h"
+
+#include "../Utils/logger.h"
 
 class ClientHandler;
 
@@ -27,6 +28,8 @@ signals:
 private:
     QList<ClientHandler*> clients;
     void removeClient(ClientHandler *client);
+
+    Logger& logger;
 };
 
 #endif // CHATNETWORKMANAGER_H

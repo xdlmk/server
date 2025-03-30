@@ -8,9 +8,13 @@
 #include <QJsonObject>
 
 #include <QThread>
+#include <unordered_map>
+#include <string_view>
 
 #include "chatnetworkmanager.h"
 #include "messageprocessor.h"
+
+#include "../Utils/logger.h"
 
 class ClientHandler : public QObject {
     Q_OBJECT
@@ -35,6 +39,10 @@ private:
     QTcpSocket *socket;
 
     ChatNetworkManager * manager;
+
+    Logger& logger;
+
+    static const std::unordered_map<std::string_view, uint> flagMap;
 };
 
 #endif // CLIENTHANDLER_H

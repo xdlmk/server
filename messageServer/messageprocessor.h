@@ -7,7 +7,7 @@
 #include <QJsonDocument>
 #include <QList>
 
-#include "databasemanager.h"
+#include "../Utils/logger.h"
 
 class ChatNetworkManager;
 class ClientHandler;

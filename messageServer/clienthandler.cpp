@@ -1,11 +1,16 @@
 #include "clienthandler.h"
 
+#include "Database/databaseconnector.h"
+#include "Database/chatmanager.h"
+#include "Database/usermanager.h"
+#include "Database/groupmanager.h"
+
 ClientHandler::ClientHandler(quintptr handle, ChatNetworkManager *manager, QObject *parent)
-    : QObject{parent}, socket(new QTcpSocket(this)) {
+    : QObject{parent}, socket(new QTcpSocket(this)), logger(Logger::instance()) {
     if(socket->setSocketDescriptor(handle)) {
         connect(socket, &QTcpSocket::readyRead, this, &ClientHandler::readClient);
         connect(socket, &QTcpSocket::disconnected, this, &ClientHandler::disconnectClient);
-        qDebug() << "Client connect: " << handle;
+        logger.log(Logger::INFO,"clienthandler.cpp::constructor", "Client connect: " + handle);
         this->manager = manager;
     } else {
         delete socket;
@@ -52,7 +57,6 @@ void ClientHandler::readClient()
 
     QJsonDocument doc = QJsonDocument::fromJson(jsonData);
     if (doc.isNull()) {
-        qDebug() << "Invalid JSON-message received";
         blockSize = 0;
         return;
     }
@@ -78,7 +82,7 @@ void ClientHandler::disconnectClient()
 void ClientHandler::sendJson(const QJsonObject &jsonToSend)
 {
     QJsonDocument sendDoc(jsonToSend);
-    qDebug() << "JSON to send (compact):" << sendDoc.toJson(QJsonDocument::Compact);
+    logger.log(Logger::INFO,"clienthandler.cpp::sendJson", "JSON to send (compact):" + sendDoc.toJson(QJsonDocument::Compact));
     QByteArray jsonData = sendDoc.toJson(QJsonDocument::Compact);
 
     QByteArray bytes;
@@ -96,24 +100,73 @@ void ClientHandler::sendJson(const QJsonObject &jsonToSend)
 
 void ClientHandler::handleFlag(const QString &flag, QJsonObject &json, QTcpSocket *socket)
 {
-    if(flag == "login") sendJson(DatabaseManager::instance().loginProcess(json, manager, socket));
-    else if(flag == "reg")  sendJson(DatabaseManager::instance().regProcess(json));
-    else if(flag == "logout") ;
-    else if(flag == "search") sendJson(DatabaseManager::instance().searchProcess(json));
-    else if(flag == "personal_message") MessageProcessor::personalMessageProcess(json, manager);
-    else if(flag == "group_message") MessageProcessor::groupMessageProcess(json, manager);
-    else if(flag == "updating_chats") sendJson(DatabaseManager::instance().updatingChatsProcess(json, manager));
-    else if(flag == "chats_info") {
+    auto it = flagMap.find(flag.toStdString());
+    uint flagId = (it != flagMap.end()) ? it->second : 0;
+
+    auto& db = DatabaseConnector::instance();
+    switch (flagId) {
+    case 1:
+        sendJson(db.getUserManager()->loginUser(json, manager, socket));
+        break;
+    case 2:
+        sendJson(db.getUserManager()->registerUser(json));
+        break;
+    case 3: break;
+    case 4:
+        sendJson(db.getUserManager()->searchUsers(json));
+        break;
+    case 5:
+        MessageProcessor::personalMessageProcess(json, manager);
+        break;
+    case 6:
+        MessageProcessor::groupMessageProcess(json, manager);
+        break;
+    case 7:
+        sendJson(db.getChatManager()->updatingChatsProcess(json));
+        break;
+    case 8: {
         QJsonObject infoObject;
         infoObject["flag"] = "chats_info";
-        infoObject["dialogs_info"] = DatabaseManager::instance().getDialogsInformation(json);
-        infoObject["groups_info"] = DatabaseManager::instance().getGroupInformation(json);
+        infoObject["dialogs_info"] = db.getChatManager()->getDialogInfo(json);
+        infoObject["groups_info"] = db.getGroupManager()->getGroupInfo(json);
         sendJson(infoObject);
-    } else if(flag == "delete_member") MessageProcessor::sendGroupMessageToActiveSockets(DatabaseManager::instance().deleteMemberFromGroup(json), manager, DatabaseManager::instance().getGroupMembers(json["group_id"].toInt()));
-    else if(flag == "add_group_members") MessageProcessor::sendGroupMessageToActiveSockets(DatabaseManager::instance().addMemberToGroup(json), manager, DatabaseManager::instance().getGroupMembers(json["group_id"].toInt()));
-    else if(flag == "load_messages") sendJson(DatabaseManager::instance().loadMessagesProcess(json));
-    else if(flag == "edit") sendJson(DatabaseManager::instance().editProfileProcess(json));
-    else if(flag == "avatars_update") sendJson(DatabaseManager::instance().getCurrentAvatarUrlById(json));
-    else if(flag == "create_group") DatabaseManager::instance().createGroup(json,manager);
-
+        break;
+    }
+    case 9: {
+        QJsonObject rmJson = db.getGroupManager()->removeMemberFromGroup(json);
+        QList<int> members = db.getGroupManager()->getGroupMembers(json["group_id"].toInt());
+        MessageProcessor::sendGroupMessageToActiveSockets(rmJson, manager, members);
+        break;
+    }
+    case 10: {
+        QJsonObject amJson = db.getGroupManager()->addMemberToGroup(json);
+        QList<int> members = db.getGroupManager()->getGroupMembers(json["group_id"].toInt());
+        MessageProcessor::sendGroupMessageToActiveSockets(amJson, manager, members);
+        break;
+    }
+    case 11:
+        sendJson(db.getChatManager()->loadMessages(json));
+        break;
+    case 12:
+        sendJson(db.getUserManager()->editUserProfile(json));
+        break;
+    case 13:
+        sendJson(db.getUserManager()->getCurrentAvatarUrlById(json));
+        break;
+    case 14:
+        db.getGroupManager()->createGroup(json,manager);
+        break;
+    default:
+        logger.log(Logger::WARN,"clienthandler.cpp::handleFlag", "Unknown flag: " + flag);
+        break;
+    }
 }
+
+const std::unordered_map<std::string_view, uint> ClientHandler::flagMap = {
+    {"login", 1}, {"reg", 2}, {"logout", 3}, {"search", 4},
+    {"personal_message", 5}, {"group_message", 6},
+    {"updating_chats", 7}, {"chats_info", 8},
+    {"delete_member", 9}, {"add_group_members", 10},
+    {"load_messages", 11}, {"edit", 12},
+    {"avatars_update", 13}, {"create_group", 14}
+};
