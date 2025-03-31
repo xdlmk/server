@@ -58,8 +58,10 @@ void GroupManager::createGroup(const QJsonObject &json, ChatNetworkManager *mana
 
 QJsonObject GroupManager::getGroupInfo(const QJsonObject &json)
 {
-    QString userlogin = json["userlogin"].toString();
-    int user_id = databaseConnector->getUserManager()->getUserId(userlogin);
+    int user_id = json["user_id"].toInt();
+    if (!databaseConnector->getUserManager()->userIdCheck(user_id)) {
+        return QJsonObject();
+    }
     QList<int> groupIds = getUserGroups(user_id);
     QJsonObject groupsInfo;
     groupsInfo["flag"] = "group_info";

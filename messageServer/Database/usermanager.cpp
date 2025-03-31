@@ -200,6 +200,19 @@ int UserManager::getUserId(const QString &userlogin)
     return -1;
 }
 
+bool UserManager::userIdCheck(const int user_id)
+{
+    QMap<QString, QVariant> params;
+    params[":user_id"] = user_id;
+    QSqlQuery query;
+    if (!databaseConnector->executeQuery(query,"SELECT id_user FROM users WHERE id_user = :user_id",params)) {
+        logger.log(Logger::DEBUG,"usermanager.cpp::userIdCheck", "Error execute query: " + query.lastError().text());
+        return false;
+    }
+    if (query.next()) return true;
+    return false;
+}
+
 QString UserManager::getUserLogin(int user_id)
 {
     QMap<QString, QVariant> params;

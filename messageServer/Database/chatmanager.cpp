@@ -9,8 +9,10 @@ ChatManager::ChatManager(DatabaseConnector *dbConnector, QObject *parent)
 
 QJsonObject ChatManager::getDialogInfo(const QJsonObject &json)
 {
-    QString userlogin = json["userlogin"].toString();
-    int user_id = databaseConnector->getUserManager()->getUserId(userlogin);
+    int user_id = json["user_id"].toInt();
+    if (!databaseConnector->getUserManager()->userIdCheck(user_id)) {
+        return QJsonObject();
+    }
     QList<int> dialogsIds = getUserDialogs(user_id);
     QJsonObject dialogsInfo;
     dialogsInfo["flag"] = "dialogs_info";
@@ -83,8 +85,11 @@ QJsonObject ChatManager::updatingChatsProcess(QJsonObject json)
     QJsonObject updatingJson;
     updatingJson["flag"] = "updating_chats";
     getUserMessages(json, jsonMessageArray);
-
-    updatingJson["messages"] = jsonMessageArray;
+    if(jsonMessageArray.first().toObject()["status"].toString() == "error") {
+        updatingJson["status"] = "error";
+    } else {
+        updatingJson["messages"] = jsonMessageArray;
+    }
     return updatingJson;
 }
 
@@ -170,9 +175,14 @@ QJsonObject ChatManager::loadMessages(const QJsonObject &requestJson)
 
 void ChatManager::getUserMessages(QJsonObject json, QJsonArray &jsonMessageArray)
 {
-    QString userlogin = json["userlogin"].toString();
-    int user_id = databaseConnector->getUserManager()->getUserId(userlogin);
-    if (user_id == -1) return;
+    int user_id = json["user_id"].toInt();
+    if (!databaseConnector->getUserManager()->userIdCheck(user_id)) {
+        QJsonObject errorObject;
+        errorObject["error"] = "User id not found, userlogin is uncorrect";
+        errorObject["status"] = "error";
+        jsonMessageArray.append(errorObject);
+        return;
+    }
 
     QList<int> dialogIds = getUserDialogs(user_id);
     for (int dialog_id : dialogIds) {
