@@ -158,28 +158,28 @@ QJsonObject UserManager::editUserProfile(const QJsonObject &dataEditProfile)
 
 QJsonObject UserManager::getCurrentAvatarUrlById(const QJsonObject &avatarsUpdate)
 {
-    QJsonArray idsArray = avatarsUpdate["ids"].toArray();
-    QJsonArray groupIds = avatarsUpdate["groups_ids"].toArray();
+    int user_id = avatarsUpdate["user_id"].toInt();
     QJsonObject avatarsUpdateJson;
     avatarsUpdateJson["flag"] = "avatars_update";
 
     QJsonArray avatarsArray;
     QJsonArray groupsAvatarsArray;
 
-    for (const QJsonValue &value : idsArray) {
-        int id = value.toInt();
-        QString avatarUrl = getUserAvatar(id);
+    QList<int> userGroups = databaseConnector->getGroupManager()->getUserGroups(user_id);
+    QList<int> userDialogs = getUserInterlocutorsIds(user_id);
+
+    for (const int &interlocutorId : userDialogs) {
+        QString avatarUrl = getUserAvatar(interlocutorId);
         QJsonObject avatarObject;
-        avatarObject["id"] = id;
+        avatarObject["id"] = interlocutorId;
         avatarObject["avatar_url"] = avatarUrl;
         avatarsArray.append(avatarObject);
     }
 
-    for (const QJsonValue &value : groupIds) {
-        int id = value.toInt();
-        QString avatarUrl = databaseConnector->getGroupManager()->getGroupAvatar(id);
+    for (const int &group_id : userGroups) {
+        QString avatarUrl = databaseConnector->getGroupManager()->getGroupAvatar(group_id);
         QJsonObject avatarObject;
-        avatarObject["group_id"] = id;
+        avatarObject["group_id"] = group_id;
         avatarObject["avatar_url"] = avatarUrl;
         groupsAvatarsArray.append(avatarObject);
     }
@@ -221,8 +221,38 @@ QString UserManager::getUserLogin(int user_id)
     if (databaseConnector->executeQuery(query,"SELECT userlogin FROM users WHERE id_user = :user_id",params) && query.next()) {
         return query.value(0).toString();
     }
-    logger.log(Logger::INFO,"usermanager.cpp::getUserLogin", "UserLogin not found: " + QString::number(user_id));
+    logger.log(Logger::WARN,"usermanager.cpp::getUserLogin", "UserLogin not found: " + QString::number(user_id));
     return "";
+}
+
+QList<int> UserManager::getUserInterlocutorsIds(int user_id)
+{
+    QSqlQuery query;
+    QMap<QString, QVariant> params;
+    params[":user_id"] = user_id;
+
+    QList<int> interlocutorsIds;
+    QString queryString = "SELECT CASE "
+                          "WHEN user1_id = :user_id THEN user2_id "
+                          "WHEN user2_id = :user_id THEN user1_id "
+                          "END AS interlocutor_id "
+                          "FROM dialogs "
+                          "WHERE user1_id = :user_id OR user2_id = :user_id";
+
+    if (databaseConnector->executeQuery(query, queryString, params)) {
+        while (query.next()) {
+            int interlocutorId = query.value("interlocutor_id").toInt();
+            if (interlocutorId != 0 && !interlocutorsIds.contains(interlocutorId)) {
+                interlocutorsIds.append(interlocutorId);
+            }
+        }
+    } else {
+        logger.log(Logger::WARN, "usermanager.cpp::getUserInterlocutorsIds",
+                   "Error getting interlocutors for user_id: " + QString::number(user_id) +
+                       " with error: " + query.lastError().text());
+    }
+
+    return interlocutorsIds;
 }
 
 void UserManager::setUserAvatar(const QString &avatarUrl, int user_id)

@@ -33,6 +33,7 @@ public:
     int getUserId(const QString &userlogin);
     bool userIdCheck(const int user_id);
     QString getUserLogin(int user_id);
+    QList<int> getUserInterlocutorsIds(int user_id);
 
     void setUserAvatar(const QString &avatarUrl, int user_id);
     QString getUserAvatar(int user_id);
