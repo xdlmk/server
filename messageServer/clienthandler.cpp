@@ -10,7 +10,9 @@ ClientHandler::ClientHandler(quintptr handle, ChatNetworkManager *manager, QObje
     if(socket->setSocketDescriptor(handle)) {
         connect(socket, &QTcpSocket::readyRead, this, &ClientHandler::readClient);
         connect(socket, &QTcpSocket::disconnected, this, &ClientHandler::disconnectClient);
-        logger.log(Logger::INFO,"clienthandler.cpp::constructor", "Client connect: " + handle);
+        connect(socket, &QTcpSocket::bytesWritten, this, &ClientHandler::handleBytesWritten);
+
+        logger.log(Logger::INFO,"clienthandler.cpp::constructor", QString("Client connect: ") + QString::number(handle));
         this->manager = manager;
     } else {
         delete socket;
@@ -70,6 +72,22 @@ void ClientHandler::readClient()
     blockSize = 0;
 }
 
+void ClientHandler::handleBytesWritten(qint64 bytes)
+{
+    QMutexLocker lock(&mutex);
+
+    logger.log(Logger::INFO, "clienthandler.cpp::handleBytesWritten", "Bytes written: " + QString::number(bytes));
+
+    if (!sendQueue.isEmpty()) {
+        sendQueue.dequeue();
+        logger.log(Logger::INFO, "clienthandler.cpp::handleBytesWritten", "Message dequeued. Queue size: " + QString::number(sendQueue.size()));
+        if (!sendQueue.isEmpty()) {
+            logger.log(Logger::INFO, "clienthandler.cpp::handleBytesWritten", "More messages in queue. Scheduling next processing.");
+            QTimer::singleShot(10, this, &ClientHandler::processSendQueue);
+        }
+    }
+}
+
 void ClientHandler::disconnectClient()
 {
     QTcpSocket *clientSocket = qobject_cast<QTcpSocket*>(sender());
@@ -85,17 +103,22 @@ void ClientHandler::sendJson(const QJsonObject &jsonToSend)
     logger.log(Logger::INFO,"clienthandler.cpp::sendJson", "JSON to send (compact):" + sendDoc.toJson(QJsonDocument::Compact));
     QByteArray jsonData = sendDoc.toJson(QJsonDocument::Compact);
 
-    QByteArray bytes;
-    bytes.clear();
-    QDataStream out(&bytes,QIODevice::WriteOnly);
-    out.setVersion(QDataStream::Qt_6_7);
+    bool shouldStartProcessing = false;
+    {
+        QMutexLocker lock(&mutex);
+        if (sendQueue.size() >= MAX_QUEUE_SIZE) {
+            logger.log(Logger::DEBUG, "clienthandler.cpp::sendJson", "Send queue overflow! Dropping message.");
+            return;
+        }
+        sendQueue.enqueue(jsonData);
+        logger.log(Logger::INFO, "clienthandler.cpp::sendJson", "Message added to queue. Queue size: " + QString::number(sendQueue.size()));
+        shouldStartProcessing = sendQueue.size() == 1;
+    }
 
-    out << quint32(jsonData.size());
-    out.writeRawData(jsonData.data(), jsonData.size());
-
-    socket->write(bytes);
-    socket->flush();
-    socket->waitForBytesWritten(3000);
+    if (shouldStartProcessing) {
+        logger.log(Logger::INFO, "clienthandler.cpp::sendJson", "Starting to process the send queue.");
+        processSendQueue();
+    }
 }
 
 void ClientHandler::handleFlag(const QString &flag, QJsonObject &json, QTcpSocket *socket)
@@ -160,6 +183,34 @@ void ClientHandler::handleFlag(const QString &flag, QJsonObject &json, QTcpSocke
         logger.log(Logger::WARN,"clienthandler.cpp::handleFlag", "Unknown flag: " + flag);
         break;
     }
+}
+
+void ClientHandler::processSendQueue()
+{
+    QMutexLocker lock(&mutex);
+    if (sendQueue.isEmpty()) {
+        logger.log(Logger::DEBUG, "clienthandler.cpp::processSendQueue", "Send queue is empty. Nothing to process.");
+        return;
+    }
+
+    QByteArray jsonData = sendQueue.head();
+    QByteArray bytes;
+    QDataStream out(&bytes, QIODevice::WriteOnly);
+    out.setVersion(QDataStream::Qt_6_7);
+
+    out << quint32(jsonData.size());
+    out.writeRawData(jsonData.data(), jsonData.size());
+    logger.log(Logger::INFO, "clienthandler.cpp::processSendQueue", "Preparing to send data. Data size: " + QString::number(jsonData.size()) + " bytes");
+
+    if (socket->state() != QAbstractSocket::ConnectedState) {
+        logger.log(Logger::DEBUG, "clienthandler.cpp::processSendQueue", "Socket is not connected. Cannot send data.");
+        return;
+    }
+    if (socket->write(bytes) == -1) {
+        logger.log(Logger::DEBUG, "clienthandler.cpp::processSendQueue", "Failed to write data: " + socket->errorString());
+        return;
+    }
+    logger.log(Logger::INFO, "clienthandler.cpp::processSendQueue", "Data written to socket. Data size: " + QString::number(bytes.size()) + " bytes");
 }
 
 const std::unordered_map<std::string_view, uint> ClientHandler::flagMap = {

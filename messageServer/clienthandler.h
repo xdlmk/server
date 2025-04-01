@@ -7,9 +7,14 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 
+#include <QTimer>
 #include <QThread>
+#include <QMutex>
+#include <QMutexLocker>
+
 #include <unordered_map>
 #include <string_view>
+#include <QQueue>
 
 #include "chatnetworkmanager.h"
 #include "messageprocessor.h"
@@ -31,17 +36,22 @@ signals:
     void clientDisconnected(ClientHandler *client);
 private slots:
     void readClient();
+    void handleBytesWritten(qint64 bytes);
     void disconnectClient();
-    void handleFlag(const QString &flag, QJsonObject &json, QTcpSocket *socket);
 private:
+    void handleFlag(const QString &flag, QJsonObject &json, QTcpSocket *socket);
+    void processSendQueue();
+
     QString login;
     int id;
     QTcpSocket *socket;
+    QQueue<QByteArray> sendQueue;
+    QMutex mutex;
 
     ChatNetworkManager * manager;
-
     Logger& logger;
 
+    const int MAX_QUEUE_SIZE = 1000;
     static const std::unordered_map<std::string_view, uint> flagMap;
 };
 
