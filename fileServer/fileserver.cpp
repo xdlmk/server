@@ -22,7 +22,6 @@ void FileServer::incomingConnection(qintptr handle) {
 
 void FileServer::readClient()
 {
-    qInfo() << "Get message fileServer!";
     socket = qobject_cast<QTcpSocket*>(sender());
     QDataStream in(socket);
     in.setVersion(QDataStream::Qt_6_7);

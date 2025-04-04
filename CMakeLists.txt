@@ -26,6 +26,7 @@ add_executable(Server
 
     fileServer/fileserver.h fileServer/fileserver.cpp
     fileServer/filehandler.h fileServer/filehandler.cpp
+    fileServer/fileclienthandler.h fileServer/fileclienthandler.cpp
 
     Utils/logger.h Utils/logger.cpp
 )

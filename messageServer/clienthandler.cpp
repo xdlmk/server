@@ -27,6 +27,7 @@ bool ClientHandler::checkSocket(QTcpSocket *socket)
 
 bool ClientHandler::setIdentifiers(const QString &login, const int &id)
 {
+    logger.log(Logger::INFO,"clientHandler.cpp::setIdentifiers", "Set login: "  + login + ", set id: " + QString::number(id));
     this->login = login;
     this->id = id;
     return !this->login.isEmpty() && this->id > 0;
@@ -67,7 +68,6 @@ void ClientHandler::readClient()
     QString flag = json["flag"].toString();
 
     handleFlag(flag,json,socket);
-
 
     blockSize = 0;
 }
@@ -179,6 +179,8 @@ void ClientHandler::handleFlag(const QString &flag, QJsonObject &json, QTcpSocke
     case 14:
         db.getGroupManager()->createGroup(json,manager);
         break;
+    case 15:
+        setIdentifiers(json["userlogin"].toString(),json["user_id"].toInt());
     default:
         logger.log(Logger::WARN,"clienthandler.cpp::handleFlag", "Unknown flag: " + flag);
         break;
@@ -219,5 +221,6 @@ const std::unordered_map<std::string_view, uint> ClientHandler::flagMap = {
     {"updating_chats", 7}, {"chats_info", 8},
     {"delete_member", 9}, {"add_group_members", 10},
     {"load_messages", 11}, {"edit", 12},
-    {"avatars_update", 13}, {"create_group", 14}
+    {"avatars_update", 13}, {"create_group", 14},
+    {"identifiers", 15}
 };
