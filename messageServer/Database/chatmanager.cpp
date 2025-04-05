@@ -123,7 +123,10 @@ QJsonObject ChatManager::loadMessages(const QJsonObject &requestJson)
     int offset = requestJson["offset"].toInt();
     QString type = requestJson["type"].toString();
 
-    int dialog_id = getOrCreateDialog(user_id,chat_id);
+    int dialog_id = 0;
+    if(type == "personal"){
+        dialog_id = getOrCreateDialog(user_id,chat_id);
+    }
 
     QJsonArray jsonMessageArray;
 

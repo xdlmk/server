@@ -100,7 +100,11 @@ void ClientHandler::disconnectClient()
 void ClientHandler::sendJson(const QJsonObject &jsonToSend)
 {
     QJsonDocument sendDoc(jsonToSend);
-    logger.log(Logger::INFO,"clienthandler.cpp::sendJson", "JSON to send (compact):" + sendDoc.toJson(QJsonDocument::Compact));
+    if(jsonToSend["flag"].toString() != "updating_chats"){
+        logger.log(Logger::INFO,"clienthandler.cpp::sendJson", "JSON to send (compact):" + sendDoc.toJson(QJsonDocument::Compact));
+    } else {
+        logger.log(Logger::INFO,"clienthandler.cpp::sendJson", "JSON to send (compact):" + jsonToSend["flag"].toString());
+     }
     QByteArray jsonData = sendDoc.toJson(QJsonDocument::Compact);
 
     bool shouldStartProcessing = false;

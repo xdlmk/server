@@ -57,5 +57,5 @@ void ChatNetworkManager::removeClient(ClientHandler *client)
 {
     clients.removeAll(client);
     client->deleteLater();
-    logger.log(Logger::INFO,"chatnetoworkmanager.cpp::setIdentifiersForClient", "Client disconnected and removed.");
+    logger.log(Logger::INFO,"chatnetoworkmanager.cpp::removeClient", "Client disconnected and removed.");
 }
