@@ -40,6 +40,7 @@ private:
     QString login;
     int id;
     QTcpSocket *fileSocket;
+    quint32 blockSize = 0;
     QQueue<QByteArray> sendQueue;
     QMutex mutex;
 

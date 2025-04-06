@@ -45,6 +45,7 @@ private:
     QString login;
     int id;
     QTcpSocket *socket;
+    quint32 blockSize = 0;
     QQueue<QByteArray> sendQueue;
     QMutex mutex;
 

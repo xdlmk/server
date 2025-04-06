@@ -26,30 +26,36 @@ bool FileClientHandler::setIdentifiers(const QString &login, const int &id)
 
 void FileClientHandler::readClient()
 {
+    logger.log(Logger::DEBUG,"fileclienthandler.cpp::readClient", "FileServer get message");
     fileSocket = qobject_cast<QTcpSocket*>(sender());
     QDataStream in(fileSocket);
     in.setVersion(QDataStream::Qt_6_7);
 
-    static quint32 blockSize = 0;
-    if (blockSize == 0 && fileSocket->bytesAvailable() < sizeof(quint32)) return;
-    if (blockSize == 0) in >> blockSize;
-    if (fileSocket->bytesAvailable() < blockSize) return;
+    while (true) {
+        if (blockSize == 0) {
+            if (fileSocket->bytesAvailable() < sizeof(quint32))
+                return;
+            in >> blockSize;
+        }
 
-    QByteArray data;
-    data.resize(blockSize);
-    in.readRawData(data.data(), blockSize);
+        if (fileSocket->bytesAvailable() < blockSize) return;
 
-    QJsonDocument doc = QJsonDocument::fromJson(data);
-    if (doc.isNull()) {
-        logger.log(Logger::DEBUG,"fileclienthandler.cpp::readClient", "Error with JSON doc check, doc is null");
+        QByteArray data;
+        data.resize(blockSize);
+        in.readRawData(data.data(), blockSize);
+
+        QJsonDocument doc = QJsonDocument::fromJson(data);
+        if (doc.isNull()) {
+            logger.log(Logger::DEBUG,"fileclienthandler.cpp::readClient", "Error with JSON doc check, doc is null");
+            blockSize = 0;
+            return;
+        }
+        QJsonObject json = doc.object();
+
+        processClientRequest(json);
+
         blockSize = 0;
-        return;
     }
-    QJsonObject json = doc.object();
-
-    processClientRequest(json);
-
-    blockSize = 0;
 }
 
 void FileClientHandler::handleBytesWritten(qint64 bytes)
@@ -99,22 +105,24 @@ void FileClientHandler::sendData(const QJsonObject &jsonToSend)
     {
         QMutexLocker lock(&mutex);
         if (sendQueue.size() >= MAX_QUEUE_SIZE) {
-            logger.log(Logger::DEBUG, "fileclienthandler.cpp::sendJson", "Send queue overflow! Dropping message.");
+            logger.log(Logger::DEBUG, "fileclienthandler.cpp::sendData", "Send queue overflow! Dropping message.");
             return;
         }
         sendQueue.enqueue(jsonData);
-        logger.log(Logger::INFO, "fileclienthandler.cpp::sendJson", "Message added to queue. Queue size: " + QString::number(sendQueue.size()));
+        logger.log(Logger::INFO, "fileclienthandler.cpp::sendData", "Message added to queue. Queue size: " + QString::number(sendQueue.size()));
         shouldStartProcessing = sendQueue.size() == 1;
     }
 
     if (shouldStartProcessing) {
-        logger.log(Logger::INFO, "fileclienthandler.cpp::sendJson", "Starting to process the send queue.");
+        logger.log(Logger::INFO, "fileclienthandler.cpp::sendData", "Starting to process the send queue.");
         processSendQueue();
     }
 }
 
 void FileClientHandler::processClientRequest(const QJsonObject &json)
 {
+    logger.log(Logger::INFO, "fileclienthandler.cpp::processClientRequest", "Get message for " + json["flag"].toString());
+    qDebug() << json;
     auto it = flagMap.find(json["flag"].toString().toStdString());
     uint flagId = (it != flagMap.end()) ? it->second : 0;
     switch (flagId) {

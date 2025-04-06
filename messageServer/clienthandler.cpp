@@ -49,27 +49,32 @@ void ClientHandler::readClient()
     QDataStream in(socket);
     in.setVersion(QDataStream::Qt_6_7);
 
-    quint32 blockSize = 0;
-    if (blockSize == 0 && socket->bytesAvailable() < sizeof(quint32)) return;
-    if (blockSize == 0) in >> blockSize;
-    if (socket->bytesAvailable() < blockSize) return;
+    while (true) {
+        if (blockSize == 0) {
+            if (socket->bytesAvailable() < sizeof(quint32))
+                return;
+            in >> blockSize;
+        }
 
-    QByteArray jsonData;
-    jsonData.resize(blockSize);
-    in.readRawData(jsonData.data(), blockSize);
+        if (socket->bytesAvailable() < blockSize) return;
 
-    QJsonDocument doc = QJsonDocument::fromJson(jsonData);
-    if (doc.isNull()) {
+        QByteArray jsonData;
+        jsonData.resize(blockSize);
+        in.readRawData(jsonData.data(), blockSize);
+
+        QJsonDocument doc = QJsonDocument::fromJson(jsonData);
+        if (doc.isNull()) {
+            blockSize = 0;
+            return;
+        }
+
+        QJsonObject json = doc.object();
+        QString flag = json["flag"].toString();
+
+        handleFlag(flag,json,socket);
+
         blockSize = 0;
-        return;
     }
-
-    QJsonObject json = doc.object();
-    QString flag = json["flag"].toString();
-
-    handleFlag(flag,json,socket);
-
-    blockSize = 0;
 }
 
 void ClientHandler::handleBytesWritten(qint64 bytes)
@@ -104,7 +109,7 @@ void ClientHandler::sendJson(const QJsonObject &jsonToSend)
         logger.log(Logger::INFO,"clienthandler.cpp::sendJson", "JSON to send (compact):" + sendDoc.toJson(QJsonDocument::Compact));
     } else {
         logger.log(Logger::INFO,"clienthandler.cpp::sendJson", "JSON to send (compact):" + jsonToSend["flag"].toString());
-     }
+    }
     QByteArray jsonData = sendDoc.toJson(QJsonDocument::Compact);
 
     bool shouldStartProcessing = false;
@@ -127,6 +132,7 @@ void ClientHandler::sendJson(const QJsonObject &jsonToSend)
 
 void ClientHandler::handleFlag(const QString &flag, QJsonObject &json, QTcpSocket *socket)
 {
+    logger.log(Logger::INFO, "clienthandler.cpp::handleFlag", "Get message for " + flag);
     auto it = flagMap.find(flag.toStdString());
     uint flagId = (it != flagMap.end()) ? it->second : 0;
 
