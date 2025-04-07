@@ -2,30 +2,23 @@
 #define FILESERVER_H
 
 #include <QObject>
-
 #include <QTcpServer>
-#include <QTcpSocket>
-
-#include <QJsonDocument>
 #include <QJsonObject>
-#include <QDataStream>
-
-#include <unordered_map>
-#include <string_view>
 
 #include "FileHandler.h"
-
 #include "../Utils/logger.h"
 
+class FileClientHandler;
 class FileServer : public QTcpServer {
     Q_OBJECT
 public:
     explicit FileServer(QObject *parent = nullptr);
+
+    FileHandler *getFileHandler();
 protected:
     void incomingConnection(qintptr handle) Q_DECL_OVERRIDE;
 private slots:
-    void readClient();
-    void sendData(const QJsonObject &sendJson);
+    void removeClient(FileClientHandler *client);
 signals:
     void sendVoiceMessage(QJsonObject voiceJson);
     void setAvatarInDatabase(const QString& avatarUrl, const int& user_id);
@@ -34,13 +27,10 @@ signals:
     void createGroup(const QJsonObject& createGroupJson);
     void sendNewGroupAvatarUrlToActiveSockets(const QJsonObject& json);
 private:
-    void processClientRequest(const QJsonObject &json);
-    QTcpSocket *socket;
-    FileHandler fileHandler;
+    FileHandler* fileHandler;
 
+    QList<FileClientHandler*> clients;
     Logger& logger;
-
-    static const std::unordered_map<std::string_view, uint> flagMap;
 };
 
 #endif // FILESERVER_H

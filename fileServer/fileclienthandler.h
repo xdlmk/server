@@ -1,5 +1,5 @@
-#ifndef CLIENTHANDLER_H
-#define CLIENTHANDLER_H
+#ifndef FILECLIENTHANDLER_H
+#define FILECLIENTHANDLER_H
 
 #include <QObject>
 #include <QTcpSocket>
@@ -16,44 +16,39 @@
 #include <string_view>
 #include <QQueue>
 
-#include "chatnetworkmanager.h"
-#include "messageprocessor.h"
+#include "fileserver.h"
 
 #include "../Utils/logger.h"
-
-class ClientHandler : public QObject {
+class FileClientHandler : public QObject
+{
     Q_OBJECT
 public:
-    explicit ClientHandler(quintptr handle,ChatNetworkManager *manager, QObject *parent = nullptr);
+    explicit FileClientHandler(quintptr handle, FileServer *server, QObject *parent = nullptr);
 
-    bool checkSocket(QTcpSocket *socket);
     bool setIdentifiers(const QString& login,const int& id);
-    QString getLogin();
-    int getId();
-
-    void sendJson(const QJsonObject &jsonToSend);
-signals:
-    void clientDisconnected(ClientHandler *client);
 private slots:
     void readClient();
     void handleBytesWritten(qint64 bytes);
     void disconnectClient();
+    void sendData(const QJsonObject &jsonToSend);
+signals:
+    void clientDisconnected(FileClientHandler *client);
 private:
-    void handleFlag(const QString &flag, QJsonObject &json, QTcpSocket *socket);
+    void processClientRequest(const QJsonObject &json);
     void processSendQueue();
 
     QString login;
     int id;
-    QTcpSocket *socket;
+    QTcpSocket *fileSocket;
     quint32 blockSize = 0;
     QQueue<QByteArray> sendQueue;
     QMutex mutex;
 
-    ChatNetworkManager * manager;
+    FileServer* server;
     Logger& logger;
 
     const int MAX_QUEUE_SIZE = 1000;
     static const std::unordered_map<std::string_view, uint> flagMap;
 };
 
-#endif // CLIENTHANDLER_H
+#endif // FILECLIENTHANDLER_H

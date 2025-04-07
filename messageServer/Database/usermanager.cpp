@@ -27,7 +27,7 @@ QJsonObject UserManager::loginUser(QJsonObject json, ChatNetworkManager *manager
         QString passwordHash = query.value(0).toString();
         if (checkPassword(password,passwordHash)) {
             jsonLogin["success"] = "ok";
-            jsonLogin["name"] = json["login"];
+            jsonLogin["userlogin"] = json["login"];
             jsonLogin["password"] = json["password"];
 
             int id;
