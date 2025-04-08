@@ -16,12 +16,11 @@ FileClientHandler::FileClientHandler(quintptr handle, FileServer *server, QObjec
     }
 }
 
-bool FileClientHandler::setIdentifiers(const QString &login, const int &id)
+bool FileClientHandler::setIdentifiers(const int &id)
 {
-    logger.log(Logger::INFO,"fileclientHandler.cpp::setIdentifiers", "Set login: "  + login + ", set id: " + QString::number(id));
-    this->login = login;
+    logger.log(Logger::INFO,"fileclientHandler.cpp::setIdentifiers","Set id: " + QString::number(id));
     this->id = id;
-    return !this->login.isEmpty() && this->id > 0;
+    return this->id > 0;
 }
 
 void FileClientHandler::readClient()
@@ -86,29 +85,22 @@ void FileClientHandler::disconnectClient()
 void FileClientHandler::sendData(const QJsonObject &jsonToSend)
 {
     QJsonDocument sendDoc(jsonToSend);
-    if(jsonToSend.contains("avatarData")){
-        QJsonObject sendJson = jsonToSend;
-        sendJson["avatarData"] = "here avatar data";
-        QJsonDocument sendDoc2(sendJson);
-        logger.log(Logger::INFO,"fileclienthandler.cpp::sendData", "JSON to send (compact):" + sendDoc2.toJson(QJsonDocument::Compact));
-    } else if(jsonToSend.contains("fileData")) {
-        QJsonObject sendJson = jsonToSend;
-        sendJson["fileData"] = "here file data";
-        QJsonDocument sendDoc3(sendJson);
-        logger.log(Logger::INFO,"fileclienthandler.cpp::sendData", "JSON to send (compact):" + sendDoc3.toJson(QJsonDocument::Compact));
+    if(jsonToSend.contains("avatarData") || jsonToSend.contains("fileData")){
+        QJsonObject logJson = jsonToSend;
+        logJson["avatarData"] = logJson["fileData"] = "here data";
+        logger.log(Logger::INFO,"fileclienthandler.cpp::sendData", "JSON to send (compact):" + QJsonDocument(logJson).toJson(QJsonDocument::Compact));
     } else {
         logger.log(Logger::INFO,"fileclienthandler.cpp::sendData", "JSON to send (compact):" + sendDoc.toJson(QJsonDocument::Compact));
     }
-    QByteArray jsonData = sendDoc.toJson(QJsonDocument::Compact);
-
     bool shouldStartProcessing = false;
     {
         QMutexLocker lock(&mutex);
+        QByteArray jsonData = sendDoc.toJson(QJsonDocument::Compact);
         if (sendQueue.size() >= MAX_QUEUE_SIZE) {
             logger.log(Logger::DEBUG, "fileclienthandler.cpp::sendData", "Send queue overflow! Dropping message.");
             return;
         }
-        sendQueue.enqueue(jsonData);
+        sendQueue.enqueue(QSharedPointer<QByteArray>::create(jsonData));
         logger.log(Logger::INFO, "fileclienthandler.cpp::sendData", "Message added to queue. Queue size: " + QString::number(sendQueue.size()));
         shouldStartProcessing = sendQueue.size() == 1;
     }
@@ -122,7 +114,6 @@ void FileClientHandler::sendData(const QJsonObject &jsonToSend)
 void FileClientHandler::processClientRequest(const QJsonObject &json)
 {
     logger.log(Logger::INFO, "fileclienthandler.cpp::processClientRequest", "Get message for " + json["flag"].toString());
-    qDebug() << json;
     auto it = flagMap.find(json["flag"].toString().toStdString());
     uint flagId = (it != flagMap.end()) ? it->second : 0;
     switch (flagId) {
@@ -163,7 +154,7 @@ void FileClientHandler::processClientRequest(const QJsonObject &json)
         break;
     }
     case 10:
-        setIdentifiers(json["userlogin"].toString(),json["user_id"].toInt());
+        setIdentifiers(json["user_id"].toInt());
         break;
     default:
         logger.log(Logger::WARN,"fileclienthandler.cpp::processClientRequest", "Unknown flag: " + json["flag"].toString());
@@ -179,9 +170,9 @@ void FileClientHandler::processSendQueue()
         return;
     }
 
-    QByteArray jsonData = sendQueue.head();
-    QByteArray bytes;
-    QDataStream out(&bytes, QIODevice::WriteOnly);
+    QByteArray jsonData = *sendQueue.head();
+    writeBuffer.clear();
+    QDataStream out(&writeBuffer, QIODevice::WriteOnly);
     out.setVersion(QDataStream::Qt_6_7);
 
     out << quint32(jsonData.size());
@@ -192,11 +183,11 @@ void FileClientHandler::processSendQueue()
         logger.log(Logger::DEBUG, "fileclienthandler.cpp::processSendQueue", "Socket is not connected. Cannot send data.");
         return;
     }
-    if (fileSocket->write(bytes) == -1) {
+    if (fileSocket->write(writeBuffer) == -1) {
         logger.log(Logger::DEBUG, "fileclienthandler.cpp::processSendQueue", "Failed to write data: " + fileSocket->errorString());
         return;
     }
-    logger.log(Logger::INFO, "fileclienthandler.cpp::processSendQueue", "Data written to socket. Data size: " + QString::number(bytes.size()) + " bytes");
+    logger.log(Logger::INFO, "fileclienthandler.cpp::processSendQueue", "Data written to socket. Data size: " + QString::number(writeBuffer.size()) + " bytes");
 }
 
 const std::unordered_map<std::string_view, uint> FileClientHandler::flagMap = {

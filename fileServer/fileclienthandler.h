@@ -25,7 +25,7 @@ class FileClientHandler : public QObject
 public:
     explicit FileClientHandler(quintptr handle, FileServer *server, QObject *parent = nullptr);
 
-    bool setIdentifiers(const QString& login,const int& id);
+    bool setIdentifiers(const int& id);
 private slots:
     void readClient();
     void handleBytesWritten(qint64 bytes);
@@ -37,11 +37,11 @@ private:
     void processClientRequest(const QJsonObject &json);
     void processSendQueue();
 
-    QString login;
     int id;
     QTcpSocket *fileSocket;
+    QByteArray writeBuffer;
     quint32 blockSize = 0;
-    QQueue<QByteArray> sendQueue;
+    QQueue<QSharedPointer<QByteArray>> sendQueue;
     QMutex mutex;
 
     FileServer* server;

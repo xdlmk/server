@@ -36,16 +36,6 @@ QList<ClientHandler*> ChatNetworkManager::getClients()
     return clients;
 }
 
-void ChatNetworkManager::setIdentifiersForClient(QTcpSocket *socket, const QString &login, const int &id)
-{
-    for(ClientHandler* client : clients) {
-        if(client->checkSocket(socket)) {
-            client->setIdentifiers(login,id);
-            break;
-        }
-    }
-}
-
 void ChatNetworkManager::incomingConnection(qintptr handle)
 {
     ClientHandler *client = new ClientHandler(handle, this, this);

@@ -27,8 +27,7 @@ public:
     explicit ClientHandler(quintptr handle,ChatNetworkManager *manager, QObject *parent = nullptr);
 
     bool checkSocket(QTcpSocket *socket);
-    bool setIdentifiers(const QString& login,const int& id);
-    QString getLogin();
+    bool setIdentifiers(const int& id);
     int getId();
 
     void sendJson(const QJsonObject &jsonToSend);
@@ -42,11 +41,11 @@ private:
     void handleFlag(const QString &flag, QJsonObject &json, QTcpSocket *socket);
     void processSendQueue();
 
-    QString login;
     int id;
     QTcpSocket *socket;
+    QByteArray writeBuffer;
     quint32 blockSize = 0;
-    QQueue<QByteArray> sendQueue;
+    QQueue<QSharedPointer<QByteArray>> sendQueue;
     QMutex mutex;
 
     ChatNetworkManager * manager;

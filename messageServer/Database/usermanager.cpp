@@ -39,9 +39,6 @@ QJsonObject UserManager::loginUser(QJsonObject json, ChatNetworkManager *manager
 
                     jsonLogin["avatar_url"] = avatar_url;
                     jsonLogin["user_id"] = id;
-
-                    if(manager) manager->setIdentifiersForClient(socket,login,id);
-                    else jsonLogin["success"] = "poor";
                 } else {
                     logger.log(Logger::DEBUG,"usermanager.cpp::loginUser", "No user found with login: " + login);
                     jsonLogin["success"] = "poor";

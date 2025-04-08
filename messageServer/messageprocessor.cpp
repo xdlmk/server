@@ -28,7 +28,8 @@ void MessageProcessor::personalMessageProcess(QJsonObject &json,ChatNetworkManag
     QString sender_avatar_url = DatabaseConnector::instance().getUserManager()->getUserAvatar(sender_id);
     json["receiver_avatar_url"] = receiver_avatar_url;
     json["sender_avatar_url"] = sender_avatar_url;
-
+    json["sender_login"] = DatabaseConnector::instance().getUserManager()->getUserLogin(sender_id);
+    json["receiver_login"] = DatabaseConnector::instance().getUserManager()->getUserLogin(receiver_id);
 
     int dialog_id = DatabaseConnector::instance().getChatManager()->getOrCreateDialog(sender_id, receiver_id);
     int message_id;
@@ -44,15 +45,15 @@ void MessageProcessor::personalMessageProcess(QJsonObject &json,ChatNetworkManag
 
 void MessageProcessor::sendMessageToActiveSockets(QJsonObject json, ChatNetworkManager *manager, int message_id, int dialog_id)
 {
-    QString sender_login = json["sender_login"].toString();
-    QString receiver_login = json["receiver_login"].toString();
+    int receiver_id = json["receiver_id"].toInt();
+    int sender_id =  json["sender_id"].toInt();
 
     QJsonObject messageJson = createMessageJson(json, message_id, dialog_id);
 
     QList<ClientHandler*> clients = manager->getClients();
     for(ClientHandler *client : clients) {
-        if(client->getLogin() == sender_login) sendToClient(client, messageJson, true);
-        if(client->getLogin() == receiver_login && sender_login != receiver_login) sendToClient(client, messageJson, false);
+        if(client->getId() == sender_id) sendToClient(client, messageJson, true);
+        if(client->getId() == receiver_id && sender_id != receiver_id) sendToClient(client, messageJson, false);
     }
 }
 
@@ -89,6 +90,8 @@ void MessageProcessor::groupMessageProcess(QJsonObject &json, ChatNetworkManager
     if(json["flag"].toString() != "group_info"){
         QString sender_avatar_url = DatabaseConnector::instance().getUserManager()->getUserAvatar(sender_id);
         json["sender_avatar_url"] = sender_avatar_url;
+        json["sender_login"] = DatabaseConnector::instance().getUserManager()->getUserLogin(sender_id);
+        json["group_name"] = DatabaseConnector::instance().getGroupManager()->getGroupName(group_id);
 
         if(json.contains("fileUrl")) {
             QString fileUrl =  json["fileUrl"].toString();

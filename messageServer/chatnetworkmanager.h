@@ -14,8 +14,6 @@ class ChatNetworkManager : public QTcpServer {
 public:
     explicit ChatNetworkManager(QObject *parent = nullptr);
     QList<ClientHandler*> getClients();
-public slots:
-    void setIdentifiersForClient(QTcpSocket *socket,const QString& login,const int& id);
 protected:
     void incomingConnection(qintptr handle) Q_DECL_OVERRIDE;
 signals:
