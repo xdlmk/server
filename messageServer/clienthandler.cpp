@@ -10,7 +10,9 @@ ClientHandler::ClientHandler(quintptr handle, ChatNetworkManager *manager, QObje
     if(socket->setSocketDescriptor(handle)) {
         connect(socket, &QTcpSocket::readyRead, this, &ClientHandler::readClient);
         connect(socket, &QTcpSocket::disconnected, this, &ClientHandler::disconnectClient);
-        logger.log(Logger::INFO,"clienthandler.cpp::constructor", "Client connect: " + handle);
+        connect(socket, &QTcpSocket::bytesWritten, this, &ClientHandler::handleBytesWritten);
+
+        logger.log(Logger::INFO,"clienthandler.cpp::constructor", QString("Client connect: ") + QString::number(handle));
         this->manager = manager;
     } else {
         delete socket;
@@ -23,16 +25,11 @@ bool ClientHandler::checkSocket(QTcpSocket *socket)
     return this->socket == socket;
 }
 
-bool ClientHandler::setIdentifiers(const QString &login, const int &id)
+bool ClientHandler::setIdentifiers(const int &id)
 {
-    this->login = login;
+    logger.log(Logger::INFO,"clientHandler.cpp::setIdentifiers","Set id: " + QString::number(id));
     this->id = id;
-    return !this->login.isEmpty() && this->id > 0;
-}
-
-QString ClientHandler::getLogin()
-{
-    return login;
+    return this->id > 0;
 }
 
 int ClientHandler::getId()
@@ -46,28 +43,48 @@ void ClientHandler::readClient()
     QDataStream in(socket);
     in.setVersion(QDataStream::Qt_6_7);
 
-    quint32 blockSize = 0;
-    if (blockSize == 0 && socket->bytesAvailable() < sizeof(quint32)) return;
-    if (blockSize == 0) in >> blockSize;
-    if (socket->bytesAvailable() < blockSize) return;
+    while (true) {
+        if (blockSize == 0) {
+            if (socket->bytesAvailable() < sizeof(quint32))
+                return;
+            in >> blockSize;
+        }
 
-    QByteArray jsonData;
-    jsonData.resize(blockSize);
-    in.readRawData(jsonData.data(), blockSize);
+        if (socket->bytesAvailable() < blockSize) return;
 
-    QJsonDocument doc = QJsonDocument::fromJson(jsonData);
-    if (doc.isNull()) {
+        QByteArray jsonData;
+        jsonData.resize(blockSize);
+        in.readRawData(jsonData.data(), blockSize);
+
+        QJsonDocument doc = QJsonDocument::fromJson(jsonData);
+        if (doc.isNull()) {
+            blockSize = 0;
+            return;
+        }
+
+        QJsonObject json = doc.object();
+        QString flag = json["flag"].toString();
+
+        handleFlag(flag,json,socket);
+
         blockSize = 0;
-        return;
     }
+}
 
-    QJsonObject json = doc.object();
-    QString flag = json["flag"].toString();
+void ClientHandler::handleBytesWritten(qint64 bytes)
+{
+    QMutexLocker lock(&mutex);
 
-    handleFlag(flag,json,socket);
+    logger.log(Logger::INFO, "clienthandler.cpp::handleBytesWritten", "Bytes written: " + QString::number(bytes));
 
-
-    blockSize = 0;
+    if (!sendQueue.isEmpty()) {
+        sendQueue.dequeue();
+        logger.log(Logger::INFO, "clienthandler.cpp::handleBytesWritten", "Message dequeued. Queue size: " + QString::number(sendQueue.size()));
+        if (!sendQueue.isEmpty()) {
+            logger.log(Logger::INFO, "clienthandler.cpp::handleBytesWritten", "More messages in queue. Scheduling next processing.");
+            QTimer::singleShot(10, this, &ClientHandler::processSendQueue);
+        }
+    }
 }
 
 void ClientHandler::disconnectClient()
@@ -82,24 +99,34 @@ void ClientHandler::disconnectClient()
 void ClientHandler::sendJson(const QJsonObject &jsonToSend)
 {
     QJsonDocument sendDoc(jsonToSend);
-    logger.log(Logger::INFO,"clienthandler.cpp::sendJson", "JSON to send (compact):" + sendDoc.toJson(QJsonDocument::Compact));
-    QByteArray jsonData = sendDoc.toJson(QJsonDocument::Compact);
+    if(jsonToSend["flag"].toString() != "updating_chats"){
+        logger.log(Logger::INFO,"clienthandler.cpp::sendJson", "JSON to send (compact):" + sendDoc.toJson(QJsonDocument::Compact));
+    } else {
+        logger.log(Logger::INFO,"clienthandler.cpp::sendJson", "JSON to send (compact):" + jsonToSend["flag"].toString());
+    }
 
-    QByteArray bytes;
-    bytes.clear();
-    QDataStream out(&bytes,QIODevice::WriteOnly);
-    out.setVersion(QDataStream::Qt_6_7);
+    bool shouldStartProcessing = false;
+    {
+        QMutexLocker lock(&mutex);
+        QByteArray jsonData = sendDoc.toJson(QJsonDocument::Compact);
+        if (sendQueue.size() >= MAX_QUEUE_SIZE) {
+            logger.log(Logger::DEBUG, "clienthandler.cpp::sendJson", "Send queue overflow! Dropping message.");
+            return;
+        }
+        sendQueue.enqueue(QSharedPointer<QByteArray>::create(jsonData));
+        logger.log(Logger::INFO, "clienthandler.cpp::sendJson", "Message added to queue. Queue size: " + QString::number(sendQueue.size()));
+        shouldStartProcessing = sendQueue.size() == 1;
+    }
 
-    out << quint32(jsonData.size());
-    out.writeRawData(jsonData.data(), jsonData.size());
-
-    socket->write(bytes);
-    socket->flush();
-    socket->waitForBytesWritten(3000);
+    if (shouldStartProcessing) {
+        logger.log(Logger::INFO, "clienthandler.cpp::sendJson", "Starting to process the send queue.");
+        processSendQueue();
+    }
 }
 
 void ClientHandler::handleFlag(const QString &flag, QJsonObject &json, QTcpSocket *socket)
 {
+    logger.log(Logger::INFO, "clienthandler.cpp::handleFlag", "Get message for " + flag);
     auto it = flagMap.find(flag.toStdString());
     uint flagId = (it != flagMap.end()) ? it->second : 0;
 
@@ -156,10 +183,41 @@ void ClientHandler::handleFlag(const QString &flag, QJsonObject &json, QTcpSocke
     case 14:
         db.getGroupManager()->createGroup(json,manager);
         break;
+    case 15:
+        setIdentifiers(json["user_id"].toInt());
+        break;
     default:
         logger.log(Logger::WARN,"clienthandler.cpp::handleFlag", "Unknown flag: " + flag);
         break;
     }
+}
+
+void ClientHandler::processSendQueue()
+{
+    QMutexLocker lock(&mutex);
+    if (sendQueue.isEmpty()) {
+        logger.log(Logger::DEBUG, "clienthandler.cpp::processSendQueue", "Send queue is empty. Nothing to process.");
+        return;
+    }
+
+    QByteArray jsonData = *sendQueue.head();
+    writeBuffer.clear();
+    QDataStream out(&writeBuffer, QIODevice::WriteOnly);
+    out.setVersion(QDataStream::Qt_6_7);
+
+    out << quint32(jsonData.size());
+    out.writeRawData(jsonData.data(), jsonData.size());
+    logger.log(Logger::INFO, "clienthandler.cpp::processSendQueue", "Preparing to send data. Data size: " + QString::number(jsonData.size()) + " bytes");
+
+    if (socket->state() != QAbstractSocket::ConnectedState) {
+        logger.log(Logger::DEBUG, "clienthandler.cpp::processSendQueue", "Socket is not connected. Cannot send data.");
+        return;
+    }
+    if (socket->write(writeBuffer) == -1) {
+        logger.log(Logger::DEBUG, "clienthandler.cpp::processSendQueue", "Failed to write data: " + socket->errorString());
+        return;
+    }
+    logger.log(Logger::INFO, "clienthandler.cpp::processSendQueue", "Data written to socket. Data size: " + QString::number(writeBuffer.size()) + " bytes");
 }
 
 const std::unordered_map<std::string_view, uint> ClientHandler::flagMap = {
@@ -168,5 +226,6 @@ const std::unordered_map<std::string_view, uint> ClientHandler::flagMap = {
     {"updating_chats", 7}, {"chats_info", 8},
     {"delete_member", 9}, {"add_group_members", 10},
     {"load_messages", 11}, {"edit", 12},
-    {"avatars_update", 13}, {"create_group", 14}
+    {"avatars_update", 13}, {"create_group", 14},
+    {"identifiers", 15}
 };

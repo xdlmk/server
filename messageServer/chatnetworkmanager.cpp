@@ -36,17 +36,6 @@ QList<ClientHandler*> ChatNetworkManager::getClients()
     return clients;
 }
 
-void ChatNetworkManager::setIdentifiersForClient(QTcpSocket *socket, const QString &login, const int &id)
-{
-    for(ClientHandler* client : clients) {
-        if(client->checkSocket(socket)) {
-            client->setIdentifiers(login,id);
-            logger.log(Logger::INFO,"chatnetoworkmanager.cpp::setIdentifiersForClient", "Set login: "  + login + ", set id: " + QString::number(id));
-            break;
-        }
-    }
-}
-
 void ChatNetworkManager::incomingConnection(qintptr handle)
 {
     ClientHandler *client = new ClientHandler(handle, this, this);
@@ -58,5 +47,5 @@ void ChatNetworkManager::removeClient(ClientHandler *client)
 {
     clients.removeAll(client);
     client->deleteLater();
-    logger.log(Logger::INFO,"chatnetoworkmanager.cpp::setIdentifiersForClient", "Client disconnected and removed.");
+    logger.log(Logger::INFO,"chatnetoworkmanager.cpp::removeClient", "Client disconnected and removed.");
 }
