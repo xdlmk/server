@@ -125,6 +125,33 @@ void FileHandler::voiceMessageProcessing(QJsonObject &voiceJson)
     emit saveFileToDatabase(uniqueFileName);
 }
 
+void FileHandler::fileMessageProcessing(QJsonObject &fileJson)
+{
+    logger.log(Logger::DEBUG,"filehandler.cpp::fileMessageProcessing", "Method starts");
+    QString fileName = fileJson["fileName"].toString();
+    QString fileExtension = fileJson["fileExtension"].toString();
+    QString fileDataBase64 = fileJson["fileData"].toString();
+    QByteArray fileData = QByteArray::fromBase64(fileDataBase64.toUtf8());
+    QString uniqueFileName = QUuid::createUuid().toString(QUuid::WithoutBraces) + "_" + fileName + "." + fileExtension;
+
+    QDir dir("uploads");
+    if (!dir.exists()) {
+        dir.mkpath(".");
+    }
+    QFile file("uploads/" + uniqueFileName);
+    if (!file.open(QIODevice::WriteOnly)) {
+        logger.log(Logger::WARN,"filehandler.cpp::fileMessageProcessing", "Failed to save file: " + uniqueFileName + " with error: " + file.errorString());
+    }
+    file.write(fileData);
+    file.close();
+    fileJson.remove("fileData");
+    fileJson.remove("fileName");
+    fileJson.remove("fileExtension");
+    fileJson["fileUrl"] = uniqueFileName;
+
+    emit saveFileToDatabase(uniqueFileName);
+}
+
 void FileHandler::createGroupWithAvatarProcessing(QJsonObject &createGroupJson)
 {
     QString fileUrl = makeUrlProcessing(createGroupJson);

@@ -44,7 +44,7 @@ void GroupManager::createGroup(const QJsonObject &json, ChatNetworkManager *mana
     }
     QJsonObject groupCreateJson;
     groupCreateJson["flag"] = "group_message";
-    groupCreateJson["message"] = "created this group";
+    groupCreateJson["message"] = "Created this group";
 
     groupCreateJson["sender_login"] = databaseConnector->getUserManager()->getUserLogin(json["creator_id"].toInt());
     groupCreateJson["sender_id"] = json["creator_id"].toInt();

@@ -156,6 +156,13 @@ void FileClientHandler::processClientRequest(const QJsonObject &json)
     case 10:
         setIdentifiers(json["user_id"].toInt());
         break;
+    case 11:
+    case 12:{
+        QJsonObject fileMessage = json;
+        server->getFileHandler()->fileMessageProcessing(fileMessage);
+        server->sendFileMessage(fileMessage);
+        break;
+    }
     default:
         logger.log(Logger::WARN,"fileclienthandler.cpp::processClientRequest", "Unknown flag: " + json["flag"].toString());
         break;
@@ -195,5 +202,6 @@ const std::unordered_map<std::string_view, uint> FileClientHandler::flagMap = {
     {"personal_file", 3}, {"group_file", 4},
     {"fileUrl", 5}, {"voiceFileUrl", 6},
     {"personal_voice_message", 7}, {"group_voice_message", 8},
-    {"create_group", 9}, {"identifiers", 10}
+    {"create_group", 9}, {"identifiers", 10},
+    {"personal_file_message", 11}, {"group_file_message", 12}
 };

@@ -20,7 +20,9 @@ protected:
 private slots:
     void removeClient(FileClientHandler *client);
 signals:
+    void sendFileMessage(QJsonObject fileJson);
     void sendVoiceMessage(QJsonObject voiceJson);
+
     void setAvatarInDatabase(const QString& avatarUrl, const int& user_id);
     void setGroupAvatarInDatabase(const QString& avatarUrl, const int& group_id);
     void saveFileToDatabase(const QString& fileUrl);

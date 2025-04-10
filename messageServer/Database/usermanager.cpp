@@ -75,8 +75,6 @@ QJsonObject UserManager::registerUser(const QJsonObject &json)
             QMap<QString, QVariant> insertParams;
             insertParams[":username"] = login;
             insertParams[":password_hash"] = password;
-            jsonReg["name"] = json["login"];
-            jsonReg["password"] = json["password"];
             if (!databaseConnector->executeQuery(query,"INSERT INTO `users` (`username`, `password_hash`, `userlogin`) VALUES (:username, :password_hash, :username);",insertParams)) {
                 logger.log(Logger::DEBUG,"usermanager.cpp::registerUser", "Error executing INSERT query: " + query.lastError().text());
                 jsonReg["success"] = "error";

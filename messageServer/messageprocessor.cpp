@@ -14,10 +14,12 @@ MessageProcessor::MessageProcessor(QObject *parent)
 
 void MessageProcessor::personalMessageProcess(QJsonObject &json,ChatNetworkManager *manager)
 {
-    if(json.contains("group_id")) {
+    if(json["flag"].toString() == "group_voice_message" || json["flag"].toString() == "group_file_message") {
         json["flag"] = "group_message";
         groupMessageProcess(json,manager);
         return;
+    } else if(json["flag"].toString() == "personal_voice_message" || json["flag"].toString() == "group_file_message") {
+        json["flag"] = "personal_message";
     }
     int receiver_id = json["receiver_id"].toInt();
     int sender_id =  json["sender_id"].toInt();
