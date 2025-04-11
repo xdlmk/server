@@ -128,24 +128,23 @@ void FileClientHandler::processClientRequest(const QJsonObject &json)
         }
         break;
     case 3:
-    case 4: {
-        QJsonObject fileUrlJson;
-        fileUrlJson["flag"] = json["flag"].toString() + "_url";
-        fileUrlJson["fileUrl"] = server->getFileHandler()->makeUrlProcessing(json);
-        sendData(fileUrlJson);
-        break;
-    }
-    case 5:
         sendData(server->getFileHandler()->getFileFromUrlProcessing(json["fileUrl"].toString(), "fileData"));
         break;
-    case 6:
+    case 4:
         sendData(server->getFileHandler()->getFileFromUrlProcessing(json["fileUrl"].toString(), "voiceFileData"));
         break;
-    case 7:
-    case 8: {
+    case 5:
+    case 6: {
         QJsonObject voiceMessage = json;
         server->getFileHandler()->voiceMessageProcessing(voiceMessage);
         server->sendVoiceMessage(voiceMessage);
+        break;
+    }
+    case 7:
+    case 8:{
+        QJsonObject fileMessage = json;
+        server->getFileHandler()->fileMessageProcessing(fileMessage);
+        server->sendFileMessage(fileMessage);
         break;
     }
     case 9: {
@@ -156,13 +155,6 @@ void FileClientHandler::processClientRequest(const QJsonObject &json)
     case 10:
         setIdentifiers(json["user_id"].toInt());
         break;
-    case 11:
-    case 12:{
-        QJsonObject fileMessage = json;
-        server->getFileHandler()->fileMessageProcessing(fileMessage);
-        server->sendFileMessage(fileMessage);
-        break;
-    }
     default:
         logger.log(Logger::WARN,"fileclienthandler.cpp::processClientRequest", "Unknown flag: " + json["flag"].toString());
         break;
@@ -199,9 +191,8 @@ void FileClientHandler::processSendQueue()
 
 const std::unordered_map<std::string_view, uint> FileClientHandler::flagMap = {
     {"avatarUrl", 1}, {"newAvatarData", 2},
-    {"personal_file", 3}, {"group_file", 4},
-    {"fileUrl", 5}, {"voiceFileUrl", 6},
-    {"personal_voice_message", 7}, {"group_voice_message", 8},
-    {"create_group", 9}, {"identifiers", 10},
-    {"personal_file_message", 11}, {"group_file_message", 12}
+    {"fileUrl", 3}, {"voiceFileUrl", 4},
+    {"personal_voice_message", 5}, {"group_voice_message", 6},
+    {"personal_file_message", 7}, {"group_file_message", 8},
+    {"create_group", 9}, {"identifiers", 10}
 };
