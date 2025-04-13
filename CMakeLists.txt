@@ -9,8 +9,18 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core Network Sql Gui)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Network Sql Gui)
+find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core Network Protobuf Sql Gui)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Network Protobuf Sql Gui)
+
+qt_add_protobuf(protosource
+    PROTO_FILES
+    ${CMAKE_SOURCE_DIR}/proto/envelope.proto
+    ${CMAKE_SOURCE_DIR}/proto/login.proto
+    ${CMAKE_SOURCE_DIR}/proto/register.proto
+    ${CMAKE_SOURCE_DIR}/proto/search.proto
+)
+
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 add_executable(Server
     main.cpp
@@ -31,11 +41,15 @@ add_executable(Server
     Utils/logger.h Utils/logger.cpp
 )
 
+add_dependencies(Server protosource)
+
 target_link_libraries(Server
     Qt${QT_VERSION_MAJOR}::Core
     Qt${QT_VERSION_MAJOR}::Network
+    Qt${QT_VERSION_MAJOR}::Protobuf
     Qt${QT_VERSION_MAJOR}::Sql
     Qt${QT_VERSION_MAJOR}::Gui
+    protosource
 )
 
 include(GNUInstallDirs)
