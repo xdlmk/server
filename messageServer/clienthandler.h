@@ -21,6 +21,9 @@
 
 #include "../Utils/logger.h"
 
+#include "envelope_qpb.h"
+#include <QtProtobuf/qprotobufserializer.h>
+
 class ClientHandler : public QObject {
     Q_OBJECT
 public:

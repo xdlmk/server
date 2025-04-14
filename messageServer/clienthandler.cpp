@@ -52,11 +52,27 @@ void ClientHandler::readClient()
 
         if (socket->bytesAvailable() < blockSize) return;
 
-        QByteArray jsonData;
+        /*QByteArray jsonData;
         jsonData.resize(blockSize);
-        in.readRawData(jsonData.data(), blockSize);
+        in.readRawData(jsonData.data(), blockSize);*/
 
-        QJsonDocument doc = QJsonDocument::fromJson(jsonData);
+        QByteArray envelopeData;
+        envelopeData.resize(blockSize);
+        in.readRawData(envelopeData.data(), blockSize);
+
+        QProtobufSerializer serializer;
+        messages::Envelope envelope;
+        if (!envelope.deserialize(&serializer, envelopeData)) {
+            logger.log(Logger::WARN, "clienthandler.cpp::readClient", "Failed to deserialize protobuf");
+            blockSize = 0;
+            return;
+        }
+
+        QString flag = envelope.flag();
+        QByteArray payload = envelope.payload();
+
+
+        /*QJsonDocument doc = QJsonDocument::fromJson(jsonData);
         if (doc.isNull()) {
             blockSize = 0;
             return;
@@ -65,7 +81,7 @@ void ClientHandler::readClient()
         QJsonObject json = doc.object();
         QString flag = json["flag"].toString();
 
-        handleFlag(flag,json,socket);
+        handleFlag(flag,json,socket);*/
 
         blockSize = 0;
     }
