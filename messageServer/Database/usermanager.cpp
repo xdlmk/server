@@ -9,7 +9,7 @@ UserManager::UserManager(DatabaseConnector *dbConnector, QObject *parent)
     : QObject{parent} , databaseConnector(dbConnector), logger(Logger::instance())
 { }
 
-QJsonObject UserManager::loginUser(QJsonObject json, ChatNetworkManager *manager, QTcpSocket *socket)
+QJsonObject UserManager::loginUser(QJsonObject json)
 {
     QString login = json["login"].toString();
     QString password = json["password"].toString();
@@ -49,6 +49,52 @@ QJsonObject UserManager::loginUser(QJsonObject json, ChatNetworkManager *manager
     return jsonLogin;
 }
 
+QByteArray UserManager::loginUser(QByteArray data)
+{
+    QProtobufSerializer serializer;
+    messages::LoginRequest request;
+
+    if (!request.deserialize(&serializer, data)) {
+        messages::LoginResponse response;
+        response.setSuccess("error");
+        return response.serialize(&serializer);
+    }
+
+    QString login = request.login();
+    QString password = request.password();
+
+    messages::LoginResponse response;
+    QMap<QString, QVariant> params;
+    params[":userlogin"] = login;
+    QSqlQuery query;
+
+    if (!databaseConnector->executeQuery(query, "SELECT password_hash FROM users WHERE userlogin = :userlogin", params)) {
+        logger.log(Logger::DEBUG, "usermanager.cpp::loginUser", "Error executing query: " + query.lastError().text());
+        response.setSuccess("error");
+    } else {
+        query.next();
+        QString passwordHash = query.value(0).toString();
+        if (checkPassword(password, passwordHash)) {
+            response.setSuccess("ok");
+            response.setUserlogin(login);
+            response.setPassword(password);
+
+            if (databaseConnector->executeQuery(query, "SELECT avatar_url, id_user FROM users WHERE userlogin = :userlogin", params)) {
+                if (query.next()) {
+                    response.setAvatarUrl(query.value(0).toString());
+                    response.setUserId(query.value(1).toULongLong());
+                } else {
+                    response.setSuccess("poor");
+                }
+            }
+        } else {
+            response.setSuccess("poor");
+        }
+    }
+
+    return response.serialize(&serializer);
+}
+
 QJsonObject UserManager::registerUser(const QJsonObject &json)
 {
     QString login = json["login"].toString();
@@ -85,6 +131,53 @@ QJsonObject UserManager::registerUser(const QJsonObject &json)
     return jsonReg;
 }
 
+QByteArray UserManager::registerUser(const QByteArray &data)
+{
+    QProtobufSerializer serializer;
+    messages::RegisterRequest request;
+
+    if (!request.deserialize(&serializer, data)) {
+        messages::RegisterResponse response;
+        response.setSuccess("error");
+        response.setErrorMes("Failed to parse request");
+        return response.serialize(&serializer);
+    }
+
+    QString login = request.login();
+    QString password = hashPassword(request.password());
+
+    messages::RegisterResponse response;
+    QMap<QString, QVariant> params;
+    params[":userlogin"] = login;
+    QSqlQuery query;
+
+    if (!databaseConnector->executeQuery(query, "SELECT COUNT(*) FROM users WHERE userlogin = :userlogin", params)) {
+        logger.log(Logger::DEBUG, "usermanager.cpp::registerUser", "Error executing SELECT query: " + query.lastError().text());
+        response.setSuccess("error");
+        response.setErrorMes("Database error during check");
+    } else {
+        query.next();
+        int count = query.value(0).toInt();
+        if (count > 0) {
+            response.setSuccess("poor");
+            response.setErrorMes("This username is taken");
+        } else {
+            response.setSuccess("ok");
+
+            QMap<QString, QVariant> insertParams;
+            insertParams[":username"] = login;
+            insertParams[":password_hash"] = password;
+            if (!databaseConnector->executeQuery(query, "INSERT INTO `users` (`username`, `password_hash`, `userlogin`) VALUES (:username, :password_hash, :username);", insertParams)) {
+                logger.log(Logger::DEBUG, "usermanager.cpp::registerUser", "Error executing INSERT query: " + query.lastError().text());
+                response.setSuccess("error");
+                response.setErrorMes("Error inserting into database");
+            }
+        }
+    }
+
+    return response.serialize(&serializer);
+}
+
 QJsonObject UserManager::searchUsers(const QJsonObject &json)
 {
     QString searchable = json["searchable"].toString();
@@ -114,6 +207,40 @@ QJsonObject UserManager::searchUsers(const QJsonObject &json)
     searchJson["flag"] = "search";
     searchJson["results"] = jsonArray;
     return searchJson;
+}
+
+QByteArray UserManager::searchUsers(const QByteArray &data)
+{
+    QProtobufSerializer serializer;
+    messages::SearchRequest request;
+
+    if (!request.deserialize(&serializer, data)) {
+        messages::SearchResponse response;
+        return response.serialize(&serializer);
+    }
+
+    QString searchable = request.searchable();
+
+    messages::SearchResponse response;
+    QMap<QString, QVariant> params;
+    params[":keyword"] = "%" + searchable + "%";
+    QSqlQuery query;
+
+    QList<messages::SearchResultItem> results;
+    if (databaseConnector->executeQuery(query, "SELECT id_user, userlogin, avatar_url FROM users WHERE userlogin LIKE :keyword", params)) {
+        while (query.next()) {
+            messages::SearchResultItem item;
+            item.setId_proto(query.value(0).toULongLong());
+            item.setUserlogin(query.value(1).toString());
+            item.setAvatarUrl(query.value(2).toString());
+            results.append(item);
+        }
+        response.setResults(results);
+    } else {
+        logger.log(Logger::DEBUG, "usermanager.cpp::searchUsers", "Error executing query: " + query.lastError().text());
+    }
+
+    return response.serialize(&serializer);
 }
 
 QJsonObject UserManager::editUserProfile(const QJsonObject &dataEditProfile)
@@ -151,6 +278,52 @@ QJsonObject UserManager::editUserProfile(const QJsonObject &dataEditProfile)
     return editResults;
 }
 
+QByteArray UserManager::editUserProfile(const QByteArray &data)
+{
+    QProtobufSerializer serializer;
+    messages::EditProfileRequest request;
+
+    if (!request.deserialize(&serializer, data)) {
+        messages::EditProfileResponse response;
+        response.setStatus("error");
+        response.setError("Failed to parse request");
+        return response.serialize(&serializer);
+    }
+
+    int user_id = request.userId();
+    QString editable = request.editable();
+    QString editInformation = request.editInformation();
+    QString bindingValue;
+
+    if (editable == "Name") bindingValue = "username";
+    else if (editable == "Phone number") bindingValue = "phone_number";
+    else if (editable == "Username") bindingValue = "userlogin";
+
+    QMap<QString, QVariant> params;
+    params[":" + bindingValue] = editInformation;
+    params[":id_user"] = user_id;
+    QSqlQuery query;
+
+    messages::EditProfileResponse response;
+
+    if (!databaseConnector->executeQuery(query, "UPDATE users SET " + bindingValue + " = :" + bindingValue + " WHERE id_user = :id_user", params)) {
+        QString errorText = query.lastError().text();
+        if (errorText.contains("Duplicate entry") || query.lastError().nativeErrorCode() == "1062") {
+            response.setStatus("poor");
+            response.setError("Unique error");
+        } else {
+            response.setStatus("poor");
+            response.setError("Unknown error");
+        }
+    } else {
+        response.setStatus("ok");
+        response.setEditable(editable);
+        response.setEditInformation(editInformation);
+    }
+
+    return response.serialize(&serializer);
+}
+
 QJsonObject UserManager::getCurrentAvatarUrlById(const QJsonObject &avatarsUpdate)
 {
     int user_id = avatarsUpdate["user_id"].toInt();
@@ -181,6 +354,45 @@ QJsonObject UserManager::getCurrentAvatarUrlById(const QJsonObject &avatarsUpdat
     avatarsUpdateJson["avatars"] = avatarsArray;
     avatarsUpdateJson["groups_avatars"] = groupsAvatarsArray;
     return avatarsUpdateJson;
+}
+
+QByteArray UserManager::getCurrentAvatarUrlById(const QByteArray &data)
+{
+    QProtobufSerializer serializer;
+    messages::AvatarsUpdateRequest request;
+
+    if (!request.deserialize(&serializer, data)) {
+        messages::AvatarsUpdateResponse response;
+        return response.serialize(&serializer);
+    }
+
+    quint64 user_id = request.userId();
+    messages::AvatarsUpdateResponse response;
+
+    QList<int> userGroups = databaseConnector->getGroupManager()->getUserGroups(user_id);
+    QList<int> userDialogs = getUserInterlocutorsIds(user_id);
+
+    QList<messages::AvatarItem> userAvatars;
+    for (const int &interlocutorId : userDialogs) {
+        QString avatarUrl = getUserAvatar(interlocutorId);
+        messages::AvatarItem avatarItem;
+        avatarItem.setId_proto(interlocutorId);
+        avatarItem.setAvatarUrl(avatarUrl);
+        userAvatars.append(avatarItem);
+    }
+
+    QList<messages::GroupAvatarItem> groupAvatars;
+    for (const int &group_id : userGroups) {
+        QString avatarUrl = databaseConnector->getGroupManager()->getGroupAvatar(group_id);
+        messages::GroupAvatarItem groupAvatarItem;
+        groupAvatarItem.setGroupId(group_id);
+        groupAvatarItem.setAvatarUrl(avatarUrl);
+        groupAvatars.append(groupAvatarItem);
+    }
+    response.setAvatars(userAvatars);
+    response.setGroupsAvatars(groupAvatars);
+
+    return response.serialize(&serializer);
 }
 
 int UserManager::getUserId(const QString &userlogin)

@@ -21,7 +21,8 @@
 
 #include "../Utils/logger.h"
 
-#include "envelope_qpb.h"
+#include "envelope.qpb.h"
+#include "identifiers.qpb.h"
 #include <QtProtobuf/qprotobufserializer.h>
 
 class ClientHandler : public QObject {
@@ -34,6 +35,7 @@ public:
     int getId();
 
     void sendJson(const QJsonObject &jsonToSend);
+    void sendData(const QString &flag, const QByteArray &data);
 signals:
     void clientDisconnected(ClientHandler *client);
 private slots:
@@ -42,6 +44,8 @@ private slots:
     void disconnectClient();
 private:
     void handleFlag(const QString &flag, QJsonObject &json, QTcpSocket *socket);
+    void handleFlag(const QString &flag, const QByteArray &data);
+
     void processSendQueue();
 
     int id;

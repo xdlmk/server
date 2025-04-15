@@ -1,0 +1,21 @@
+syntax = "proto3";
+package messages;
+
+message AvatarsUpdateRequest {
+    uint64 user_id = 1;
+}
+
+message AvatarItem {
+    uint64 id = 1;
+    string avatar_url = 2;
+}
+
+message GroupAvatarItem {
+    uint64 group_id = 1;
+    string avatar_url = 2;
+}
+
+message AvatarsUpdateResponse {
+    repeated AvatarItem avatars = 1;
+    repeated GroupAvatarItem groups_avatars = 2;
+}

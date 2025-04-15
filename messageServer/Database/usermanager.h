@@ -15,6 +15,13 @@
 
 #include "../../Utils/logger.h"
 
+#include "login.qpb.h"
+#include "register.qpb.h"
+#include "search.qpb.h"
+#include "editProfile.qpb.h"
+#include "avatarsUpdate.qpb.h"
+#include <QtProtobuf/qprotobufserializer.h>
+
 class DatabaseConnector;
 class ChatNetworkManager;
 
@@ -24,11 +31,20 @@ class UserManager : public QObject
 public:
     explicit UserManager(DatabaseConnector *dbConnector, QObject *parent = nullptr);
 
-    QJsonObject loginUser(QJsonObject json, ChatNetworkManager *manager, QTcpSocket *socket);
+    QJsonObject loginUser(QJsonObject json);
+    QByteArray loginUser(QByteArray data);
+
     QJsonObject registerUser(const QJsonObject &json);
+    QByteArray registerUser(const QByteArray &data);
+
     QJsonObject searchUsers(const QJsonObject &json);
+    QByteArray searchUsers(const QByteArray &data);
+
     QJsonObject editUserProfile(const QJsonObject &dataEditProfile);
+    QByteArray editUserProfile(const QByteArray &data);
+
     QJsonObject getCurrentAvatarUrlById(const QJsonObject &avatarsUpdate);
+    QByteArray getCurrentAvatarUrlById(const QByteArray &data);
 
     int getUserId(const QString &userlogin);
     bool userIdCheck(const int user_id);
