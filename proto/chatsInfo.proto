@@ -1,0 +1,34 @@
+syntax = "proto3";
+package messages;
+
+message ChatsInfoRequest {
+    uint64 user_id = 1;
+}
+
+message DialogInfoItem {
+    uint64 user_id = 1;
+    string username = 2;
+    string userlogin = 3;
+    string phone_number = 4;
+    string avatar_url = 5;
+    string created_at = 6;
+}
+
+message GroupMember {
+    uint64 id = 1;
+    string username = 2;
+    string status = 3;
+    string avatar_url = 4;
+}
+
+message GroupInfoItem {
+    uint64 group_id = 1;
+    string group_name = 2;
+    string avatar_url = 3;
+    repeated GroupMember members = 4;
+}
+
+message ChatsInfoResponse {
+    repeated DialogInfoItem dialogs_info = 1;
+    repeated GroupInfoItem groups_info = 2;
+}

@@ -22,6 +22,7 @@
 #include "../Utils/logger.h"
 
 #include "envelope.qpb.h"
+#include "chatsInfo.qpb.h"
 #include "identifiers.qpb.h"
 #include <QtProtobuf/qprotobufserializer.h>
 

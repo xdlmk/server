@@ -10,6 +10,9 @@
 
 #include "../../Utils/logger.h"
 
+#include "chatsInfo.qpb.h"
+#include <QtProtobuf/qprotobufserializer.h>
+
 class DatabaseConnector;
 class ChatNetworkManager;
 
@@ -20,7 +23,7 @@ public:
     explicit GroupManager(DatabaseConnector *dbConnector, QObject *parent = nullptr);
 
     void createGroup(const QJsonObject &json, ChatNetworkManager *manager);
-    QJsonObject getGroupInfo(const QJsonObject &json);
+    QList<messages::GroupInfoItem> getGroupInfo(const int &user_id);
     QList<int> getGroupMembers(int group_id);
     QJsonObject addMemberToGroup(const QJsonObject &addMemberJson);
     QJsonObject removeMemberFromGroup(const QJsonObject &removeMemberJson);

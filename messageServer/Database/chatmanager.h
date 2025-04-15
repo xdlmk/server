@@ -12,6 +12,9 @@
 
 #include "../../Utils/logger.h"
 
+#include "chatsInfo.qpb.h"
+#include <QtProtobuf/qprotobufserializer.h>
+
 class DatabaseConnector;
 
 class ChatManager : public QObject
@@ -20,7 +23,7 @@ class ChatManager : public QObject
 public:
     explicit ChatManager(DatabaseConnector *dbConnector, QObject *parent = nullptr);
 
-    QJsonObject getDialogInfo(const QJsonObject &json);
+    QList<messages::DialogInfoItem> getDialogInfo(const int &user_id);
     int getOrCreateDialog(int sender_id, int receiver_id);
 
     QJsonObject updatingChatsProcess(QJsonObject json);

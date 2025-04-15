@@ -56,49 +56,46 @@ void GroupManager::createGroup(const QJsonObject &json, ChatNetworkManager *mana
     MessageProcessor::groupMessageProcess(groupCreateJson,manager);
 }
 
-QJsonObject GroupManager::getGroupInfo(const QJsonObject &json)
+QList<messages::GroupInfoItem> GroupManager::getGroupInfo(const int &user_id)
 {
-    int user_id = json["user_id"].toInt();
+    QList<messages::GroupInfoItem> response;
+
     if (!databaseConnector->getUserManager()->userIdCheck(user_id)) {
-        return QJsonObject();
+        return response;
     }
+
     QList<int> groupIds = getUserGroups(user_id);
-    QJsonObject groupsInfo;
-    groupsInfo["flag"] = "group_info";
 
-    QJsonArray groupsInfoArray;
     for (int group_id : groupIds) {
-        QJsonObject groupInfoJson;
-
         int creator_id;
+
         QSqlQuery queryName;
         QMap<QString, QVariant> params;
         params[":group_id"] = group_id;
-        databaseConnector->executeQuery(queryName, "SELECT group_name, avatar_url, created_by FROM group_chats WHERE group_id = :group_id", params);
-        queryName.next();
-        groupInfoJson["group_name"] = queryName.value(0).toString();
-        groupInfoJson["avatar_url"] = queryName.value(1).toString();
-        creator_id = queryName.value(2).toInt();
-        groupInfoJson["group_id"] = group_id;
+        if (databaseConnector->executeQuery(queryName, "SELECT group_name, avatar_url, created_by FROM group_chats WHERE group_id = :group_id", params) && queryName.next()) {
+            messages::GroupInfoItem groupItem;
+            groupItem.setGroupId(group_id);
+            groupItem.setGroupName(queryName.value(0).toString());
+            groupItem.setAvatarUrl(queryName.value(1).toString());
+            creator_id = queryName.value(2).toInt();
 
-        QJsonArray groupMembersArray;
-
-
-        for(int user_id : getGroupMembers(group_id)){
-            QJsonObject member;
-            member["id"] = user_id;
-            member["username"] = databaseConnector->getUserManager()->getUserLogin(user_id);
-            member["status"] = user_id == creator_id ? "creator" : "member";
-            member["avatar_url"] = databaseConnector->getUserManager()->getUserAvatar(user_id);
-
-            groupMembersArray.append(member);
+            QList<messages::GroupMember> members;
+            for (int member_id : getGroupMembers(group_id)) {
+                messages::GroupMember memberItem;
+                memberItem.setId_proto(member_id);
+                memberItem.setUsername(databaseConnector->getUserManager()->getUserLogin(member_id));
+                memberItem.setStatus(member_id == creator_id ? "creator" : "member");
+                memberItem.setAvatarUrl(databaseConnector->getUserManager()->getUserAvatar(member_id));
+                members.append(memberItem);
+            }
+            groupItem.setMembers(members);
+            response.append(groupItem);
+        } else {
+            qWarning() << "Group with id:" << group_id << " not found in database";
+            continue;
         }
-
-        groupInfoJson["members"] = groupMembersArray;
-        groupsInfoArray.append(groupInfoJson);
     }
-    groupsInfo["info"] = groupsInfoArray;
-    return groupsInfo;
+    return response;
 }
 
 QList<int> GroupManager::getGroupMembers(int group_id)

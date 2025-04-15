@@ -213,8 +213,8 @@ void ClientHandler::handleFlag(const QString &flag, QJsonObject &json, QTcpSocke
     case 8: {
         QJsonObject infoObject;
         infoObject["flag"] = "chats_info";
-        infoObject["dialogs_info"] = db.getChatManager()->getDialogInfo(json);
-        infoObject["groups_info"] = db.getGroupManager()->getGroupInfo(json);
+        //infoObject["dialogs_info"] = db.getChatManager()->getDialogInfo(json);
+        //infoObject["groups_info"] = db.getGroupManager()->getGroupInfo(json);
         sendJson(infoObject);
         break;
     }
@@ -279,11 +279,14 @@ void ClientHandler::handleFlag(const QString &flag, const QByteArray &data)
         //sendJson(db.getChatManager()->updatingChatsProcess(json));
         break;
     case 8: {
-        //QJsonObject infoObject;
-        //infoObject["flag"] = "chats_info";
-        //infoObject["dialogs_info"] = db.getChatManager()->getDialogInfo(json);
-        //infoObject["groups_info"] = db.getGroupManager()->getGroupInfo(json);
-        //sendJson(infoObject);
+        messages::ChatsInfoRequest request;
+        QProtobufSerializer serializer;
+        request.deserialize(&serializer,data);
+
+        messages::ChatsInfoResponse response;
+        response.setDialogsInfo(db.getChatManager()->getDialogInfo(request.userId()));
+        response.setGroupsInfo(db.getGroupManager()->getGroupInfo(request.userId()));
+        sendData("chats_info",response.serialize(&serializer));
         break;
     }
     case 9: {

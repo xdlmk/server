@@ -7,58 +7,53 @@ ChatManager::ChatManager(DatabaseConnector *dbConnector, QObject *parent)
     : QObject{parent} , databaseConnector(dbConnector), logger(Logger::instance())
 {}
 
-QJsonObject ChatManager::getDialogInfo(const QJsonObject &json)
+QList<messages::DialogInfoItem> ChatManager::getDialogInfo(const int &user_id)
 {
-    int user_id = json["user_id"].toInt();
-    if (!databaseConnector->getUserManager()->userIdCheck(user_id)) {
-        return QJsonObject();
-    }
-    QList<int> dialogsIds = getUserDialogs(user_id);
-    QJsonObject dialogsInfo;
-    dialogsInfo["flag"] = "dialogs_info";
+    QList<messages::DialogInfoItem> dialogsInfoList;
 
-    QJsonArray dialogsInfoArray;
+    if (!databaseConnector->getUserManager()->userIdCheck(user_id)) {
+        return dialogsInfoList;
+    }
+
+    QList<int> dialogsIds = getUserDialogs(user_id);
+
     for (int dialog_id : dialogsIds) {
-        QJsonObject dialogsInfoJson;
-        if(dialog_id == 0) continue;
+        if (dialog_id == 0) continue;
 
         QMap<QString, QVariant> params;
         params[":dialog_id"] = dialog_id;
         params[":user_id"] = user_id;
         QSqlQuery query;
-        if (databaseConnector->executeQuery(query,"SELECT CASE WHEN user1_id = :user_id THEN user2_id ELSE user1_id END AS second_user_id FROM dialogs WHERE dialog_id = :dialog_id",params)) {
-            if(query.next()){
+
+        if (databaseConnector->executeQuery(query, "SELECT CASE WHEN user1_id = :user_id THEN user2_id ELSE user1_id END AS second_user_id FROM dialogs WHERE dialog_id = :dialog_id", params)) {
+            if (query.next()) {
                 int second_user_id = query.value(0).toInt();
 
                 QSqlQuery userQuery;
                 QMap<QString, QVariant> userParams;
                 userParams[":second_user_id"] = second_user_id;
+
                 if (databaseConnector->executeQuery(userQuery, "SELECT * FROM users WHERE id_user = :second_user_id", userParams) && userQuery.next()) {
-                    int id_user = userQuery.value(0).toInt();
-                    QString username = userQuery.value(1).toString();
-                    QString userlogin = userQuery.value(2).toString();
-                    QString phone_number = userQuery.value(4).toString();
-                    QString avatar_url = userQuery.value(5).toString();
-                    QDateTime created_at = userQuery.value(6).toDateTime();
-
-                    dialogsInfoJson["user_id"] = id_user;
-                    dialogsInfoJson["username"] = username;
-                    dialogsInfoJson["userlogin"] = userlogin;
-                    dialogsInfoJson["phone_number"] = phone_number;
-                    dialogsInfoJson["avatar_url"] = avatar_url;
-                    dialogsInfoJson["created_at"] = created_at.toString();
+                    messages::DialogInfoItem dialogItem;
+                    dialogItem.setUserId(userQuery.value(0).toULongLong());
+                    dialogItem.setUsername(userQuery.value(1).toString());
+                    dialogItem.setUserlogin(userQuery.value(2).toString());
+                    dialogItem.setPhoneNumber(userQuery.value(4).toString());
+                    dialogItem.setAvatarUrl(userQuery.value(5).toString());
+                    dialogItem.setCreatedAt(userQuery.value(6).toDateTime().toString());
+                    dialogsInfoList.append(dialogItem);
                 } else {
-                    qWarning() << "User with id: " << second_user_id << " not found";
+                    logger.log(Logger::DEBUG,"chatmanager.cpp::getDialogInfo", "User with id: " + QString::number(second_user_id) + " not found");
                 }
-            } else qWarning() << "Dialog with id:" << dialog_id << " not found in database";
+            } else {
+                logger.log(Logger::DEBUG,"chatmanager.cpp::getDialogInfo", "Dialog with id:" + QString::number(dialog_id) + " not found in database");
+            }
         } else {
-            qWarning() << "Query exec return false: " << query.lastError().text();
+            logger.log(Logger::DEBUG,"chatmanager.cpp::getDialogInfo", "Query exec return false: " + query.lastError().text());
         }
-
-        dialogsInfoArray.append(dialogsInfoJson);
     }
-    dialogsInfo["info"] = dialogsInfoArray;
-    return dialogsInfo;
+
+    return dialogsInfoList;
 }
 
 int ChatManager::getOrCreateDialog(int sender_id, int receiver_id)
