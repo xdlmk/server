@@ -23,6 +23,8 @@
 
 #include "envelope.qpb.h"
 #include "chatsInfo.qpb.h"
+#include "deleteMember.qpb.h"
+#include "addMembers.qpb.h"
 #include "identifiers.qpb.h"
 #include <QtProtobuf/qprotobufserializer.h>
 

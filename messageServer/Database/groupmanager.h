@@ -11,6 +11,8 @@
 #include "../../Utils/logger.h"
 
 #include "chatsInfo.qpb.h"
+#include "deleteMember.qpb.h"
+#include "addMembers.qpb.h"
 #include <QtProtobuf/qprotobufserializer.h>
 
 class DatabaseConnector;
@@ -25,8 +27,8 @@ public:
     void createGroup(const QJsonObject &json, ChatNetworkManager *manager);
     QList<messages::GroupInfoItem> getGroupInfo(const int &user_id);
     QList<int> getGroupMembers(int group_id);
-    QJsonObject addMemberToGroup(const QJsonObject &addMemberJson);
-    QJsonObject removeMemberFromGroup(const QJsonObject &removeMemberJson);
+    QByteArray addMemberToGroup(const groups::AddGroupMembersRequest &addMemberData);
+    QByteArray removeMemberFromGroup(const groups::DeleteMemberRequest &request, bool &failed);
 
     void setGroupAvatar(const QString &avatarUrl, int group_id);
     QString getGroupAvatar(int group_id);

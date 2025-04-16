@@ -192,58 +192,58 @@ void ClientHandler::handleFlag(const QString &flag, QJsonObject &json, QTcpSocke
     auto& db = DatabaseConnector::instance();
     switch (flagId) {
     case 1:
-        sendJson(db.getUserManager()->loginUser(json));
+        //sendJson(db.getUserManager()->loginUser(json));
         break;
     case 2:
-        sendJson(db.getUserManager()->registerUser(json));
+        //sendJson(db.getUserManager()->registerUser(json));
         break;
     case 3: break;
     case 4:
-        sendJson(db.getUserManager()->searchUsers(json));
+        //sendJson(db.getUserManager()->searchUsers(json));
         break;
     case 5:
-        MessageProcessor::personalMessageProcess(json, manager);
+        //MessageProcessor::personalMessageProcess(json, manager);
         break;
     case 6:
-        MessageProcessor::groupMessageProcess(json, manager);
+        //MessageProcessor::groupMessageProcess(json, manager);
         break;
     case 7:
-        sendJson(db.getChatManager()->updatingChatsProcess(json));
+        //sendJson(db.getChatManager()->updatingChatsProcess(json));
         break;
     case 8: {
-        QJsonObject infoObject;
-        infoObject["flag"] = "chats_info";
+        //QJsonObject infoObject;
+        //infoObject["flag"] = "chats_info";
         //infoObject["dialogs_info"] = db.getChatManager()->getDialogInfo(json);
         //infoObject["groups_info"] = db.getGroupManager()->getGroupInfo(json);
-        sendJson(infoObject);
+        //sendJson(infoObject);
         break;
     }
     case 9: {
-        QJsonObject rmJson = db.getGroupManager()->removeMemberFromGroup(json);
-        QList<int> members = db.getGroupManager()->getGroupMembers(json["group_id"].toInt());
-        MessageProcessor::sendGroupMessageToActiveSockets(rmJson, manager, members);
+        //QJsonObject rmJson = db.getGroupManager()->removeMemberFromGroup(json);
+        //QList<int> members = db.getGroupManager()->getGroupMembers(json["group_id"].toInt());
+        //MessageProcessor::sendGroupMessageToActiveSockets(rmJson, manager, members);
         break;
     }
     case 10: {
-        QJsonObject amJson = db.getGroupManager()->addMemberToGroup(json);
-        QList<int> members = db.getGroupManager()->getGroupMembers(json["group_id"].toInt());
-        MessageProcessor::sendGroupMessageToActiveSockets(amJson, manager, members);
+        //QJsonObject amJson = db.getGroupManager()->addMemberToGroup(json);
+        //QList<int> members = db.getGroupManager()->getGroupMembers(json["group_id"].toInt());
+        //MessageProcessor::sendGroupMessageToActiveSockets(amJson, manager, members);
         break;
     }
     case 11:
-        sendJson(db.getChatManager()->loadMessages(json));
+        //sendJson(db.getChatManager()->loadMessages(json));
         break;
     case 12:
-        sendJson(db.getUserManager()->editUserProfile(json));
+        //sendJson(db.getUserManager()->editUserProfile(json));
         break;
     case 13:
-        sendJson(db.getUserManager()->getCurrentAvatarUrlById(json));
+        //sendJson(db.getUserManager()->getCurrentAvatarUrlById(json));
         break;
     case 14:
-        db.getGroupManager()->createGroup(json,manager);
+        //db.getGroupManager()->createGroup(json,manager);
         break;
     case 15:
-        setIdentifiers(json["user_id"].toInt());
+        //setIdentifiers(json["user_id"].toInt());
         break;
     default:
         logger.log(Logger::WARN,"clienthandler.cpp::handleFlag", "Unknown flag: " + flag);
@@ -290,15 +290,28 @@ void ClientHandler::handleFlag(const QString &flag, const QByteArray &data)
         break;
     }
     case 9: {
-        //QJsonObject rmJson = db.getGroupManager()->removeMemberFromGroup(json);
-        //QList<int> members = db.getGroupManager()->getGroupMembers(json["group_id"].toInt());
-        //MessageProcessor::sendGroupMessageToActiveSockets(rmJson, manager, members);
+        QProtobufSerializer serializer;
+        groups::DeleteMemberRequest request;
+        request.deserialize(&serializer, data);
+
+        bool failed = true;
+        QByteArray rmData = db.getGroupManager()->removeMemberFromGroup(request, failed);
+        if(!failed){
+            QList<int> members = db.getGroupManager()->getGroupMembers(request.groupId());
+            MessageProcessor::sendGroupMessageToActiveSockets("delete_member", rmData, this->id, manager, members);
+        } else {
+            sendData("delete_member",rmData);
+        }
         break;
     }
     case 10: {
-        //QJsonObject amJson = db.getGroupManager()->addMemberToGroup(json);
-        //QList<int> members = db.getGroupManager()->getGroupMembers(json["group_id"].toInt());
-        //MessageProcessor::sendGroupMessageToActiveSockets(amJson, manager, members);
+        QProtobufSerializer serializer;
+        groups::AddGroupMembersRequest request;
+        request.deserialize(&serializer, data);
+
+        QByteArray amData = db.getGroupManager()->addMemberToGroup(request);
+        QList<int> members = db.getGroupManager()->getGroupMembers(request.groupId());
+        MessageProcessor::sendGroupMessageToActiveSockets("add_group_members", amData, this->id, manager, members);
         break;
     }
     case 11:

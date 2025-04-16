@@ -59,22 +59,19 @@ void MessageProcessor::sendMessageToActiveSockets(QJsonObject json, ChatNetworkM
     }
 }
 
-void MessageProcessor::sendGroupMessageToActiveSockets(QJsonObject json, ChatNetworkManager *manager, QList<int> groupMembersIds)
+void MessageProcessor::sendGroupMessageToActiveSockets(const QString& flag, QByteArray data, int sender_id, ChatNetworkManager *manager, QList<int> groupMembersIds)
 {
     Logger::instance().log(Logger::INFO,"messageprocessor.cpp::sendGroupMessageToActiveSockets", "Method starts");
-    int sender_id;
-    if(json.contains("sender_id")){
-    sender_id = json["sender_id"].toInt();
-    } else sender_id = -1;
-    json["time"] = QDateTime::currentDateTime().toString("HH:mm");
 
     QList<ClientHandler*> clients = manager->getClients();
     for(ClientHandler *client : clients) {
         if(client->getId() == sender_id) {
-            sendToClient(client, json, false);
+            client->sendData(flag,data);// instead of sendToClient
+            //sendToClient(client, json, false);
         }
         if(groupMembersIds.contains(client->getId()) && sender_id != client->getId()) {
-            sendToClient(client, json, false);
+            client->sendData(flag,data);// instead of sendToClient
+            //sendToClient(client, json, false);
         }
     }
 }
@@ -104,14 +101,16 @@ void MessageProcessor::groupMessageProcess(QJsonObject &json, ChatNetworkManager
     }
 
     json["message_id"] = message_id;
-    sendGroupMessageToActiveSockets(json, manager, groupMembersIds);
+    //dont forget add time to proto like json["time"] = QDateTime::currentDateTime().toString("HH:mm");
+    //sendGroupMessageToActiveSockets(json, manager, groupMembersIds);
 }
 
 void MessageProcessor::sendNewGroupAvatarUrlToActiveSockets(const QJsonObject &json, ChatNetworkManager *manager)
 {
     QList<int> groupMembersIds = DatabaseConnector::instance().getGroupManager()->getGroupMembers(json["id"].toInt());
     QJsonObject jsonToSend = json;
-    sendGroupMessageToActiveSockets(jsonToSend, manager, groupMembersIds);
+    //dont forget add time to proto like json["time"] = QDateTime::currentDateTime().toString("HH:mm");
+    //sendGroupMessageToActiveSockets(jsonToSend, manager, groupMembersIds);
 }
 
 QJsonObject MessageProcessor::createMessageJson(QJsonObject json, int message_id, int dialog_id)

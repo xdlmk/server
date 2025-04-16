@@ -18,7 +18,7 @@ public:
     explicit MessageProcessor(QObject *parent = nullptr);
     static void personalMessageProcess(QJsonObject &json, ChatNetworkManager *manager);
     static void sendMessageToActiveSockets(QJsonObject json, ChatNetworkManager *manager, int message_id, int dialog_id);
-    static void sendGroupMessageToActiveSockets(QJsonObject json, ChatNetworkManager *manager, QList<int> groupMembersIds);
+    static void sendGroupMessageToActiveSockets(const QString& flag, QByteArray data, int sender_id, ChatNetworkManager *manager, QList<int> groupMembersIds);
     static void groupMessageProcess(QJsonObject &json,ChatNetworkManager *manager);
     static void sendNewGroupAvatarUrlToActiveSockets(const QJsonObject &json,ChatNetworkManager *manager);
 private:

@@ -91,7 +91,7 @@ QList<messages::GroupInfoItem> GroupManager::getGroupInfo(const int &user_id)
             groupItem.setMembers(members);
             response.append(groupItem);
         } else {
-            qWarning() << "Group with id:" << group_id << " not found in database";
+            logger.log(Logger::DEBUG,"groupmanager.cpp::getGroupInfo", "Group with id: " + QString::number(group_id) + " not found in database");
             continue;
         }
     }
@@ -109,76 +109,74 @@ QList<int> GroupManager::getGroupMembers(int group_id)
             members.append(queryMembers.value(0).toInt());
         }
     } else {
-        logger.log(Logger::WARN,"groupmanager.cpp::saveFileRecord", "Query exec error: " + queryMembers.lastError().text());
+        logger.log(Logger::INFO,"groupmanager.cpp::getGroupMembers", "Query exec error: " + queryMembers.lastError().text());
     }
     return members;
 }
 
-QJsonObject GroupManager::addMemberToGroup(const QJsonObject &addMemberJson)
+QByteArray GroupManager::addMemberToGroup(const groups::AddGroupMembersRequest &addMemberData)
 {
-    int user_id = addMemberJson["id"].toInt();
-    int group_id = addMemberJson["group_id"].toInt();
-    int admin_id = addMemberJson["admin_id"].toInt();
-    QJsonObject addMemberResult;
-    addMemberResult["flag"] = "add_group_members";
-    addMemberResult["group_id"] = group_id;
-    addMemberResult["sender_id"] = admin_id;
+    quint64 group_id = addMemberData.groupId();
+    quint64 admin_id = addMemberData.adminId();
 
-    QJsonArray newMembers = addMemberJson["members"].toArray();
+    groups::AddGroupMembersResponse response;
+    response.setGroupId(group_id);
+    response.setSenderId(admin_id);
+    response.setTime(QDateTime::currentDateTime().toString("HH:mm"));
 
-    QList<int> idsMembers;
-    QJsonArray addedMembers;
-    for (const QJsonValue &value : newMembers) {
-        QJsonObject memberObject = value.toObject();
-        int id = memberObject["id"].toInt();
-        idsMembers.append(id);
-    }
-    for(int id : idsMembers) {
+    QList<groups::AddedMember> members;
+    for (const groups::GroupMemberContact &memberContact : addMemberData.members()) {
+        int id = static_cast<int>(memberContact.userId());
+
         QSqlQuery checkQuery;
         QMap<QString, QVariant> params;
         params[":group_id"] = group_id;
         params[":user_id"] = id;
 
-        if (!databaseConnector->executeQuery(checkQuery, "SELECT COUNT(*) FROM group_members WHERE group_id = :group_id AND user_id = :user_id",params) || !checkQuery.next()) {
-            qWarning() << "Failed exec check query: " << checkQuery.lastError().text();
+        if (!databaseConnector->executeQuery(checkQuery,
+                                             "SELECT COUNT(*) FROM group_members WHERE group_id = :group_id AND user_id = :user_id", params) || !checkQuery.next()) {
+            logger.log(Logger::DEBUG,"groupmanager.cpp::addMemberToGroup", "Failed exec check query: " + checkQuery.lastError().text());
             continue;
         }
 
         int count = checkQuery.value(0).toInt();
         if (count == 0) {
             QSqlQuery query;
-
-            if(!databaseConnector->executeQuery(query, "INSERT INTO group_members (group_id, user_id) VALUES (:group_id, :user_id)", params)) {
-                qWarning() << "Failed to insert into group_members(add new Member):" << query.lastError().text();
+            if (!databaseConnector->executeQuery(query,
+                                                 "INSERT INTO group_members (group_id, user_id) VALUES (:group_id, :user_id)", params)) {
+                logger.log(Logger::DEBUG,"groupmanager.cpp::addMemberToGroup", "Failed to insert into group_members:" + query.lastError().text());
             } else {
-                QJsonObject member;
-                member["avatar_url"] = databaseConnector->getUserManager()->getUserAvatar(id);
-                member["id"] = id;
-                member["status"] = "member";
-                member["username"] = databaseConnector->getUserManager()->getUserLogin(id);
-                addedMembers.append(member);
+                groups::AddedMember addedMember;
+                addedMember.setUserId(id);
+                addedMember.setAvatarUrl(databaseConnector->getUserManager()->getUserAvatar(id));
+                addedMember.setStatus("member");
+                addedMember.setUsername(databaseConnector->getUserManager()->getUserLogin(id));
+                members.append(addedMember);
             }
         }
     }
-    addMemberResult["addedMembers"] = addedMembers;
-    return addMemberResult;
+    response.setAddedMembers(members);
+
+    QProtobufSerializer serializer;
+    return response.serialize(&serializer);
 }
 
-QJsonObject GroupManager::removeMemberFromGroup(const QJsonObject &removeMemberJson)
+QByteArray GroupManager::removeMemberFromGroup(const groups::DeleteMemberRequest &request, bool &failed)
 {
-    int user_id_deletion = removeMemberJson["user_id"].toInt();
-    int group_id = removeMemberJson["group_id"].toInt();
-    int creator_id = removeMemberJson["creator_id"].toInt();
-    QJsonObject removeMemberResult;
-    removeMemberResult["flag"] = "delete_member";
-    removeMemberResult["group_id"] = group_id;
-    removeMemberResult["sender_id"] = creator_id;
+    quint64 user_id_deletion = request.userId();
+    quint64 group_id = request.groupId();
+    quint64 creator_id = request.creatorId();
+
+    groups::DeleteMemberResponse response;
+    response.setGroupId(group_id);
+    response.setSenderId(creator_id);
+    response.setTime(QDateTime::currentDateTime().toString("HH:mm"));
 
     QSqlQuery query;
     QMap<QString, QVariant> params;
     params[":group_id"] = group_id;
     params[":created_by"] = creator_id;
-    databaseConnector->executeQuery(query, "SELECT COUNT(*) FROM group_chats WHERE group_id = :group_id AND created_by = :created_by",params);
+    databaseConnector->executeQuery(query, "SELECT COUNT(*) FROM group_chats WHERE group_id = :group_id AND created_by = :created_by", params);
     query.next();
 
     int count = query.value(0).toInt();
@@ -186,21 +184,23 @@ QJsonObject GroupManager::removeMemberFromGroup(const QJsonObject &removeMemberJ
         QMap<QString, QVariant> deleteUserParams;
         deleteUserParams[":user_id"] = user_id_deletion;
         deleteUserParams[":group_id"] = group_id;
-        databaseConnector->executeQuery(query, "DELETE FROM group_members WHERE user_id = :user_id AND group_id = :group_id",deleteUserParams);
+        databaseConnector->executeQuery(query, "DELETE FROM group_members WHERE user_id = :user_id AND group_id = :group_id", deleteUserParams);
 
         if (query.numRowsAffected() > 0) {
-            logger.log(Logger::DEBUG,"groupmanager.cpp::removeMemberFromGroup", "Member delete success id: " + QString::number(user_id_deletion) + " for group_id =" + QString::number(group_id));
-            removeMemberResult["deleted_user_id"] = user_id_deletion;
-            removeMemberResult["error_code"] = 0;
+            logger.log(Logger::DEBUG, "groupmanager.cpp::removeMemberFromGroup", "Member delete success id: " + QString::number(user_id_deletion) + " for group_id =" + QString::number(group_id));
+            response.setDeletedUserId(user_id_deletion);
+            response.setErrorCode(0);
+            failed = false;
         } else {
-            logger.log(Logger::DEBUG,"groupmanager.cpp::removeMemberFromGroup", "User with user_id: " + QString::number(user_id_deletion) + "not a member group with group_id: " + QString::number(group_id));
-            removeMemberResult["error_code"] = 1;
+            logger.log(Logger::DEBUG, "groupmanager.cpp::removeMemberFromGroup", "User with user_id: " + QString::number(user_id_deletion) + " not a member of group with group_id: " + QString::number(group_id));
+            response.setErrorCode(1);
         }
     } else {
-        logger.log(Logger::DEBUG,"groupmanager.cpp::removeMemberFromGroup", "User with id: " + QString::number(creator_id) + " not the admin of the group with id: " + QString::number(group_id));
-        removeMemberResult["error_code"] = 2;
+        logger.log(Logger::DEBUG, "groupmanager.cpp::removeMemberFromGroup", "User with id: " + QString::number(creator_id) + " is not the admin of the group with id: " + QString::number(group_id));
+        response.setErrorCode(2);
     }
-    return removeMemberResult;
+    QProtobufSerializer serializer;
+    return response.serialize(&serializer);
 }
 
 void GroupManager::setGroupAvatar(const QString &avatarUrl, int group_id)

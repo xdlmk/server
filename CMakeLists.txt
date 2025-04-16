@@ -22,6 +22,8 @@ qt_add_protobuf(protosource
     ${CMAKE_SOURCE_DIR}/proto/avatarsUpdate.proto
     ${CMAKE_SOURCE_DIR}/proto/identifiers.proto
     ${CMAKE_SOURCE_DIR}/proto/chatsInfo.proto
+    ${CMAKE_SOURCE_DIR}/proto/deleteMember.proto
+    ${CMAKE_SOURCE_DIR}/proto/addMembers.proto
 )
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
