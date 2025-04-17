@@ -275,9 +275,13 @@ void ClientHandler::handleFlag(const QString &flag, const QByteArray &data)
     case 6:
         //MessageProcessor::groupMessageProcess(json, manager);
         break;
-    case 7:
-        //sendJson(db.getChatManager()->updatingChatsProcess(json));
+    case 7:{
+        chats::UpdatingChatsRequest request;
+        QProtobufSerializer serializer;
+        request.deserialize(&serializer,data);
+        sendData("updating_chats", db.getChatManager()->updatingChatsProcess(request.userId()).serialize(&serializer));
         break;
+    }
     case 8: {
         messages::ChatsInfoRequest request;
         QProtobufSerializer serializer;

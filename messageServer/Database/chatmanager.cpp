@@ -74,18 +74,17 @@ int ChatManager::getOrCreateDialog(int sender_id, int receiver_id)
     }
 }
 
-QJsonObject ChatManager::updatingChatsProcess(QJsonObject json)
+chats::UpdatingChatsResponse ChatManager::updatingChatsProcess(const quint64 &user_id)
 {
-    QJsonArray jsonMessageArray;
-    QJsonObject updatingJson;
-    updatingJson["flag"] = "updating_chats";
-    getUserMessages(json, jsonMessageArray);
-    if(jsonMessageArray.first().toObject()["status"].toString() == "error") {
-        updatingJson["status"] = "error";
+    chats::UpdatingChatsResponse response;
+    bool failed = false;
+    QList<chats::ChatMessage> messages = getUserMessages(user_id, failed);
+    if(failed){
+        response.setStatus("error");
     } else {
-        updatingJson["messages"] = jsonMessageArray;
+        response.setMessages(messages);
     }
-    return updatingJson;
+    return response;
 }
 
 int ChatManager::saveMessage(int dialogId, int senderId, int receiverId, const QString &message, const QString &fileUrl, const QString &flag)
@@ -141,8 +140,9 @@ QJsonObject ChatManager::loadMessages(const QJsonObject &requestJson)
     if (!databaseConnector->executeQuery(query,queryStr,params)) logger.log(Logger::WARN,"chatmanager.cpp::loadMessagesProcess", "Error exec query: " + query.lastError().text());
     while (query.next()) {
         if (type == "personal") {
-            appendMessageObject(query, jsonMessageArray);
+            //appendMessageObject(query, jsonMessageArray); // use generatePersonalMessageObject
         } else if (type == "group") {
+            // use generateGroupMessageObject
             int message_id = query.value(0).toInt();
             QString content = query.value(1).toString();
             QString fileUrl = query.value(2).toString();
@@ -171,16 +171,13 @@ QJsonObject ChatManager::loadMessages(const QJsonObject &requestJson)
     return response;
 }
 
-void ChatManager::getUserMessages(QJsonObject json, QJsonArray &jsonMessageArray)
+QList<chats::ChatMessage> ChatManager::getUserMessages(const quint64 user_id, bool &failed)
 {
-    int user_id = json["user_id"].toInt();
     if (!databaseConnector->getUserManager()->userIdCheck(user_id)) {
-        QJsonObject errorObject;
-        errorObject["error"] = "User id not found, userlogin is uncorrect";
-        errorObject["status"] = "error";
-        jsonMessageArray.append(errorObject);
-        return;
+        failed = true;
+        return QList<chats::ChatMessage>();
     }
+    QList<chats::ChatMessage> messages;
 
     QList<int> dialogIds = getUserDialogs(user_id);
     for (int dialog_id : dialogIds) {
@@ -193,7 +190,7 @@ void ChatManager::getUserMessages(QJsonObject json, QJsonArray &jsonMessageArray
             continue;
         }
         while (query.next()) {
-            appendMessageObject(query, jsonMessageArray);
+            messages.prepend(generatePersonalMessageObject(query));
         }
     }
     QList<int> groupIds = databaseConnector->getGroupManager()->getUserGroups(user_id);
@@ -208,26 +205,13 @@ void ChatManager::getUserMessages(QJsonObject json, QJsonArray &jsonMessageArray
         }
 
         while (query.next()) {
-            int message_id = query.value(0).toInt();
-            QString content = query.value(1).toString();
-            QString fileUrl = query.value(2).toString();
-            QString timestamp = query.value(3).toString();
-            int senderId = query.value(4).toInt();
-
-            QJsonObject messageObject;
-            messageObject["FullDate"] = timestamp;
-            messageObject["fileUrl"] = fileUrl;
-            messageObject["group_id"] = group_id;
-            messageObject["group_name"] = databaseConnector->getGroupManager()->getGroupName(group_id);
-            messageObject["sender_id"] = senderId;
-            messageObject["sender_login"] = databaseConnector->getUserManager()->getUserLogin(senderId);
-            messageObject["message_id"] = message_id;
-            messageObject["str"] = content;
-            messageObject["time"] = QDateTime::fromString(timestamp, Qt::ISODate).toString("hh:mm");
-
-            jsonMessageArray.prepend(messageObject);
+            chats::ChatMessage message = generateGroupMessageObject(query);
+            message.setGroupId(group_id);
+            message.setGroupName(databaseConnector->getGroupManager()->getGroupName(group_id));
+            messages.prepend(message);
         }
     }
+    return messages;
 }
 
 QList<int> ChatManager::getUserDialogs(int user_id)
@@ -249,7 +233,7 @@ QList<int> ChatManager::getUserDialogs(int user_id)
     return dialogIds;
 }
 
-void ChatManager::appendMessageObject(QSqlQuery &query, QJsonArray &jsonMessageArray)
+chats::ChatMessage ChatManager::generatePersonalMessageObject(QSqlQuery &query)
 {
     int message_id = query.value(0).toInt();
     QString content = query.value(1).toString();
@@ -258,18 +242,36 @@ void ChatManager::appendMessageObject(QSqlQuery &query, QJsonArray &jsonMessageA
     int senderId = query.value(4).toInt();
     int receiverId = query.value(5).toInt();
 
-    if (message_id + senderId + receiverId == 0) return;
+    if (message_id + senderId + receiverId == 0) return chats::ChatMessage();
 
-    QJsonObject messageObject;
-    messageObject["FullDate"] = timestamp;
-    messageObject["receiver_login"] = databaseConnector->getUserManager()->getUserLogin(receiverId);
-    messageObject["sender_login"] = databaseConnector->getUserManager()->getUserLogin(senderId);
-    messageObject["receiver_id"] = receiverId;
-    messageObject["sender_id"] = senderId;
-    messageObject["message_id"] = message_id;
-    messageObject["str"] = content;
-    messageObject["fileUrl"] = fileUrl;
-    messageObject["time"] = QDateTime::fromString(timestamp, Qt::ISODate).toString("hh:mm");
+    chats::ChatMessage message;
+    message.setMessageId(message_id);
+    message.setMediaUrl(fileUrl);
+    message.setTimestamp(timestamp);
+    message.setReceiverId(receiverId);
+    message.setSenderId(senderId);
+    message.setSenderLogin(databaseConnector->getUserManager()->getUserLogin(senderId));
+    message.setReceiverLogin(databaseConnector->getUserManager()->getUserLogin(receiverId));
+    message.setContent(content);
 
-    jsonMessageArray.prepend(messageObject);
+    return message;
+}
+
+chats::ChatMessage ChatManager::generateGroupMessageObject(QSqlQuery &query)
+{
+    int message_id = query.value(0).toInt();
+    QString content = query.value(1).toString();
+    QString fileUrl = query.value(2).toString();
+    QString timestamp = query.value(3).toString();
+    int senderId = query.value(4).toInt();
+
+    chats::ChatMessage message;
+    message.setMessageId(message_id);
+    message.setMediaUrl(fileUrl);
+    message.setTimestamp(timestamp);
+    message.setSenderId(senderId);
+    message.setSenderLogin(databaseConnector->getUserManager()->getUserLogin(senderId));
+    message.setContent(content);
+
+    return message;
 }

@@ -21,11 +21,12 @@
 
 #include "../Utils/logger.h"
 
-#include "envelope.qpb.h"
-#include "chatsInfo.qpb.h"
-#include "deleteMember.qpb.h"
-#include "addMembers.qpb.h"
-#include "identifiers.qpb.h"
+#include "generated_protobuf/envelope.qpb.h"
+#include "generated_protobuf/chatsInfo.qpb.h"
+#include "generated_protobuf/deleteMember.qpb.h"
+#include "generated_protobuf/addMembers.qpb.h"
+#include "generated_protobuf/updatingChats.qpb.h"
+#include "generated_protobuf/identifiers.qpb.h"
 #include <QtProtobuf/qprotobufserializer.h>
 
 class ClientHandler : public QObject {

@@ -10,9 +10,9 @@
 
 #include "../../Utils/logger.h"
 
-#include "chatsInfo.qpb.h"
-#include "deleteMember.qpb.h"
-#include "addMembers.qpb.h"
+#include "generated_protobuf/chatsInfo.qpb.h"
+#include "generated_protobuf/deleteMember.qpb.h"
+#include "generated_protobuf/addMembers.qpb.h"
 #include <QtProtobuf/qprotobufserializer.h>
 
 class DatabaseConnector;

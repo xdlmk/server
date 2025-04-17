@@ -12,7 +12,8 @@
 
 #include "../../Utils/logger.h"
 
-#include "chatsInfo.qpb.h"
+#include "generated_protobuf/chatsInfo.qpb.h"
+#include "generated_protobuf/updatingChats.qpb.h"
 #include <QtProtobuf/qprotobufserializer.h>
 
 class DatabaseConnector;
@@ -26,15 +27,16 @@ public:
     QList<messages::DialogInfoItem> getDialogInfo(const int &user_id);
     int getOrCreateDialog(int sender_id, int receiver_id);
 
-    QJsonObject updatingChatsProcess(QJsonObject json);
+    chats::UpdatingChatsResponse updatingChatsProcess(const quint64 &user_id);
 
     int saveMessage(int dialogId, int senderId, int receiverId, const QString &message, const QString &fileUrl, const QString &flag);
     QJsonObject loadMessages(const QJsonObject &requestJson);
 
 private:
-    void getUserMessages(QJsonObject json, QJsonArray &jsonMessageArray);
+    QList<chats::ChatMessage> getUserMessages(const quint64 user_id, bool &failed);
     QList<int> getUserDialogs(int user_id);
-    void appendMessageObject(QSqlQuery &query, QJsonArray &jsonMessageArray);
+    chats::ChatMessage generatePersonalMessageObject(QSqlQuery &query);
+    chats::ChatMessage generateGroupMessageObject(QSqlQuery &query);
 
     DatabaseConnector *databaseConnector;
 
