@@ -110,64 +110,56 @@ int ChatManager::saveMessage(int dialogId, int senderId, int receiverId, const Q
     return query.lastInsertId().toInt();
 }
 
-QJsonObject ChatManager::loadMessages(const QJsonObject &requestJson)
+QByteArray ChatManager::loadMessages(const QByteArray &requestData)
 {
-    int chat_id = requestJson["chat_id"].toInt();
-    int user_id = requestJson["user_id"].toInt();
-    int offset = requestJson["offset"].toInt();
-    QString type = requestJson["type"].toString();
+    QProtobufSerializer serializer;
+    chats::LoadMessagesRequest request;
 
-    int dialog_id = 0;
-    if(type == "personal"){
-        dialog_id = getOrCreateDialog(user_id,chat_id);
+    if (!request.deserialize(&serializer, requestData)) {
+        logger.log(Logger::WARN, "chatmanager.cpp::loadMessages", "Error deserialize request");
+        return QByteArray();
     }
 
-    QJsonArray jsonMessageArray;
-
-    QSqlQuery query;
+    uint64_t chat_id = request.chatId();
+    uint64_t user_id = request.userId();
+    uint32_t offset = request.offset();
     QString queryStr;
     QMap<QString, QVariant> params;
-    if(type == "personal") {
+    params[":offset"] = offset;
+
+    if (request.type() == chats::ChatTypeGadget::ChatType::PERSONAL) {
+        QString chat_name = databaseConnector->getUserManager()->getUserLogin(chat_id);
+        int dialog_id = getOrCreateDialog(user_id, chat_id);
         params[":dialog_id"] = dialog_id;
-        params[":offset"] = offset;
         queryStr = "SELECT message_id, content, media_url, timestamp, sender_id, receiver_id FROM messages WHERE dialog_id = :dialog_id ORDER BY timestamp DESC LIMIT 50 OFFSET :offset";
-    } else if(type == "group") {
+    } else if(request.type() == chats::ChatTypeGadget::ChatType::GROUP) {
         params[":group_id"] = chat_id;
-        params[":offset"] = chat_id;
         queryStr = "SELECT message_id, content, media_url, timestamp, sender_id FROM messages WHERE group_id = :group_id ORDER BY timestamp DESC LIMIT 50 OFFSET :offset";
     }
 
-    if (!databaseConnector->executeQuery(query,queryStr,params)) logger.log(Logger::WARN,"chatmanager.cpp::loadMessagesProcess", "Error exec query: " + query.lastError().text());
+    QSqlQuery query;
+    chats::LoadMessagesResponse response;
+    QList<chats::ChatMessage> messages;
+
+    if (!databaseConnector->executeQuery(query,queryStr,params)){
+        logger.log(Logger::WARN,"chatmanager.cpp::loadMessagesProcess", "Error exec query: " + query.lastError().text());
+        return QByteArray();
+    }
+
     while (query.next()) {
-        if (type == "personal") {
-            //appendMessageObject(query, jsonMessageArray); // use generatePersonalMessageObject
-        } else if (type == "group") {
-            // use generateGroupMessageObject
-            int message_id = query.value(0).toInt();
-            QString content = query.value(1).toString();
-            QString fileUrl = query.value(2).toString();
-            QString timestamp = query.value(3).toString();
-            int senderId = query.value(4).toInt();
-
-            QJsonObject messageObject;
-            messageObject["FullDate"] = timestamp;
-            messageObject["fileUrl"] = fileUrl;
-            messageObject["group_id"] = chat_id;
-            messageObject["group_name"] = databaseConnector->getGroupManager()->getGroupName(chat_id);
-            messageObject["sender_id"] = senderId;
-            messageObject["sender_login"] = databaseConnector->getUserManager()->getUserLogin(senderId);
-            messageObject["message_id"] = message_id;
-            messageObject["str"] = content;
-            messageObject["time"] = QDateTime::fromString(timestamp, Qt::ISODate).toString("hh:mm");
-
-            jsonMessageArray.prepend(messageObject);
+        if (request.type() == chats::ChatTypeGadget::ChatType::PERSONAL) {
+            messages.prepend(generatePersonalMessageObject(query));
+        } else if (request.type() == chats::ChatTypeGadget::ChatType::GROUP) {
+            chats::ChatMessage message = generateGroupMessageObject(query);
+            message.setGroupId(chat_id);
+            message.setGroupName(databaseConnector->getGroupManager()->getGroupName(chat_id));
+            messages.prepend(message);
         }
     }
-    QJsonObject response;
-    response["flag"] = "load_messages";
-    response["chat_name"] = requestJson["chat_name"];
-    response["type"] = requestJson["type"];
-    response["messages"] = jsonMessageArray;
+
+    response.setMessages(messages);
+    response.setType(request.type());
+
     return response;
 }
 

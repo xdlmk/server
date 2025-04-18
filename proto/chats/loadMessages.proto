@@ -1,0 +1,22 @@
+syntax = "proto3";
+package chats;
+
+import "chatMessage.proto";
+
+enum ChatType {
+    PERSONAL = 0;
+    GROUP = 1;
+}
+
+message LoadMessagesRequest {
+    uint64 chat_id = 1;
+    uint64 user_id = 2;
+    uint32 offset = 3;
+    ChatType type = 4;
+}
+
+message LoadMessagesResponse {
+    string chat_name = 1;
+    ChatType type = 2;
+    repeated ChatMessage messages = 3;
+}

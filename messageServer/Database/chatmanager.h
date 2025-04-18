@@ -14,6 +14,8 @@
 
 #include "generated_protobuf/chatsInfo.qpb.h"
 #include "generated_protobuf/updatingChats.qpb.h"
+#include "generated_protobuf/loadMessages.qpb.h"
+#include "generated_protobuf/chatMessage.qpb.h"
 #include <QtProtobuf/qprotobufserializer.h>
 
 class DatabaseConnector;
@@ -30,7 +32,7 @@ public:
     chats::UpdatingChatsResponse updatingChatsProcess(const quint64 &user_id);
 
     int saveMessage(int dialogId, int senderId, int receiverId, const QString &message, const QString &fileUrl, const QString &flag);
-    QJsonObject loadMessages(const QJsonObject &requestJson);
+    QByteArray loadMessages(const QByteArray &requestData);
 
 private:
     QList<chats::ChatMessage> getUserMessages(const quint64 user_id, bool &failed);

@@ -23,6 +23,8 @@ qt_add_protobuf(protosource
         ${CMAKE_SOURCE_DIR}/proto/common/identifiers.proto
         ${CMAKE_SOURCE_DIR}/proto/chats/chatsInfo.proto
         ${CMAKE_SOURCE_DIR}/proto/chats/updatingChats.proto
+        ${CMAKE_SOURCE_DIR}/proto/chats/chatMessage.proto
+        ${CMAKE_SOURCE_DIR}/proto/chats/loadMessages.proto
         ${CMAKE_SOURCE_DIR}/proto/group/deleteMember.proto
         ${CMAKE_SOURCE_DIR}/proto/group/addMembers.proto
     OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/generated_protobuf"

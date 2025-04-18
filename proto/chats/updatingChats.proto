@@ -1,21 +1,10 @@
 syntax = "proto3";
 package chats;
 
+import "chatMessage.proto";
+
 message UpdatingChatsRequest {
     uint64 user_id = 1;
-}
-
-message ChatMessage {
-    uint64 message_id = 1;
-    string content = 2;
-    string media_url = 3;
-    string timestamp = 4;
-    uint64 sender_id = 5;
-    uint64 receiver_id = 6;
-    uint64 group_id = 7;
-    string group_name = 8;
-    string sender_login = 9;
-    string receiver_login = 10;
 }
 
 message UpdatingChatsResponse {
