@@ -53,7 +53,7 @@ void GroupManager::createGroup(const QJsonObject &json, ChatNetworkManager *mana
     groupCreateJson["group_avatar_url"] = json["avatar_url"].toString();
     groupCreateJson["special_type"] = "create";
 
-    MessageProcessor::groupMessageProcess(groupCreateJson,manager);
+    //MessageProcessor::groupMessageProcess(groupCreateJson,manager); //method change
 }
 
 QList<messages::GroupInfoItem> GroupManager::getGroupInfo(const int &user_id)

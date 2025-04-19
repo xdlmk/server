@@ -270,7 +270,7 @@ void ClientHandler::handleFlag(const QString &flag, const QByteArray &data)
         sendData("search",db.getUserManager()->searchUsers(data));
         break;
     case 5:
-        //MessageProcessor::personalMessageProcess(json, manager);
+        MessageProcessor::personalMessageProcess(data, manager);
         break;
     case 6:
         //MessageProcessor::groupMessageProcess(json, manager);
@@ -302,7 +302,7 @@ void ClientHandler::handleFlag(const QString &flag, const QByteArray &data)
         QByteArray rmData = db.getGroupManager()->removeMemberFromGroup(request, failed);
         if(!failed){
             QList<int> members = db.getGroupManager()->getGroupMembers(request.groupId());
-            MessageProcessor::sendGroupMessageToActiveSockets("delete_member", rmData, this->id, manager, members);
+            MessageProcessor::sendGroupMessageToActiveSockets(rmData, "delete_member", members, manager);
         } else {
             sendData("delete_member",rmData);
         }
@@ -315,7 +315,7 @@ void ClientHandler::handleFlag(const QString &flag, const QByteArray &data)
 
         QByteArray amData = db.getGroupManager()->addMemberToGroup(request);
         QList<int> members = db.getGroupManager()->getGroupMembers(request.groupId());
-        MessageProcessor::sendGroupMessageToActiveSockets("add_group_members", amData, this->id, manager, members);
+        MessageProcessor::sendGroupMessageToActiveSockets(amData, "add_group_members", members, manager);
         break;
     }
     case 11:
