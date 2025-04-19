@@ -12,50 +12,41 @@ MessageProcessor::MessageProcessor(QObject *parent)
     : QObject{parent}
 {}
 
-void MessageProcessor::personalMessageProcess(QJsonObject &json,ChatNetworkManager *manager)
+void MessageProcessor::personalMessageProcess(const QByteArray &data, ChatNetworkManager *manager)
 {
-    if(json["flag"].toString() == "group_voice_message" || json["flag"].toString() == "group_file_message") {
+    /*if(json["flag"].toString() == "group_voice_message" || json["flag"].toString() == "group_file_message") {
         json["flag"] = "group_message";
         groupMessageProcess(json,manager);
         return;
     } else if(json["flag"].toString() == "personal_voice_message" || json["flag"].toString() == "group_file_message") {
         json["flag"] = "personal_message";
-    }
-    int receiver_id = json["receiver_id"].toInt();
-    int sender_id =  json["sender_id"].toInt();
-    QString message =  json["message"].toString();
+    }*/
+    chats::ChatMessage message;
+    QProtobufSerializer serializer;
+    message.deserialize(&serializer,data);
 
+    quint64 receiver_id = message.receiverId();
+    quint64 sender_id = message.senderId();
 
-    QString receiver_avatar_url = DatabaseConnector::instance().getUserManager()->getUserAvatar(receiver_id);
-    QString sender_avatar_url = DatabaseConnector::instance().getUserManager()->getUserAvatar(sender_id);
-    json["receiver_avatar_url"] = receiver_avatar_url;
-    json["sender_avatar_url"] = sender_avatar_url;
-    json["sender_login"] = DatabaseConnector::instance().getUserManager()->getUserLogin(sender_id);
-    json["receiver_login"] = DatabaseConnector::instance().getUserManager()->getUserLogin(receiver_id);
+    message.setSenderLogin(DatabaseConnector::instance().getUserManager()->getUserLogin(sender_id));
+    message.setReceiverLogin(DatabaseConnector::instance().getUserManager()->getUserLogin(receiver_id));
 
-    int dialog_id = DatabaseConnector::instance().getChatManager()->getOrCreateDialog(sender_id, receiver_id);
-    int message_id;
+    quint64 dialog_id = DatabaseConnector::instance().getChatManager()->getOrCreateDialog(sender_id, receiver_id);
+    quint64 message_id;
+    QString content = message.content();
+    QString fileUrl =  message.mediaUrl();
 
-    if(json.contains("fileUrl")) {
-        QString fileUrl =  json["fileUrl"].toString();
-        message_id = DatabaseConnector::instance().getChatManager()->saveMessage(dialog_id, sender_id,receiver_id, message, fileUrl, "personal");
-    } else {
-        message_id = DatabaseConnector::instance().getChatManager()->saveMessage(dialog_id, sender_id,receiver_id, message, "" , "personal");
-    }
-    sendMessageToActiveSockets(json, manager, message_id, dialog_id);
+    message_id = DatabaseConnector::instance().getChatManager()->saveMessage(dialog_id, sender_id,receiver_id, content, fileUrl, "personal");
+    message.setMessageId(message_id);
+    sendMessageToActiveSockets(message.serialize(&serializer), "personal_message", sender_id, receiver_id, manager);
 }
 
-void MessageProcessor::sendMessageToActiveSockets(QJsonObject json, ChatNetworkManager *manager, int message_id, int dialog_id)
+void MessageProcessor::sendMessageToActiveSockets(const QByteArray &data, const QString &flag, const quint64 &sender_id, const quint64 &receiver_id, ChatNetworkManager *manager)
 {
-    int receiver_id = json["receiver_id"].toInt();
-    int sender_id =  json["sender_id"].toInt();
-
-    QJsonObject messageJson = createMessageJson(json, message_id, dialog_id);
-
     QList<ClientHandler*> clients = manager->getClients();
     for(ClientHandler *client : clients) {
-        if(client->getId() == sender_id) sendToClient(client, messageJson, true);
-        if(client->getId() == receiver_id && sender_id != receiver_id) sendToClient(client, messageJson, false);
+        if(client->getId() == sender_id) client->sendData(flag,data);
+        if(client->getId() == receiver_id && sender_id != receiver_id) client->sendData(flag,data);
     }
 }
 

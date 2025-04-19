@@ -123,16 +123,18 @@ QByteArray ChatManager::loadMessages(const QByteArray &requestData)
     uint64_t chat_id = request.chatId();
     uint64_t user_id = request.userId();
     uint32_t offset = request.offset();
+    QString chat_name;
     QString queryStr;
     QMap<QString, QVariant> params;
     params[":offset"] = offset;
 
     if (request.type() == chats::ChatTypeGadget::ChatType::PERSONAL) {
-        QString chat_name = databaseConnector->getUserManager()->getUserLogin(chat_id);
+        chat_name = databaseConnector->getUserManager()->getUserLogin(chat_id);
         int dialog_id = getOrCreateDialog(user_id, chat_id);
         params[":dialog_id"] = dialog_id;
         queryStr = "SELECT message_id, content, media_url, timestamp, sender_id, receiver_id FROM messages WHERE dialog_id = :dialog_id ORDER BY timestamp DESC LIMIT 50 OFFSET :offset";
     } else if(request.type() == chats::ChatTypeGadget::ChatType::GROUP) {
+        chat_name = databaseConnector->getGroupManager()->getGroupName(chat_id);
         params[":group_id"] = chat_id;
         queryStr = "SELECT message_id, content, media_url, timestamp, sender_id FROM messages WHERE group_id = :group_id ORDER BY timestamp DESC LIMIT 50 OFFSET :offset";
     }
@@ -159,8 +161,9 @@ QByteArray ChatManager::loadMessages(const QByteArray &requestData)
 
     response.setMessages(messages);
     response.setType(request.type());
+    response.setChatName(chat_name);
 
-    return response;
+    return response.serialize(&serializer);
 }
 
 QList<chats::ChatMessage> ChatManager::getUserMessages(const quint64 user_id, bool &failed)

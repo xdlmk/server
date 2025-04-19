@@ -13,10 +13,10 @@ int main(int argc, char *argv[])
     QObject::connect(&fileServer, &FileServer::setGroupAvatarInDatabase, &messageServer, &ChatNetworkManager::setGroupAvatarInDatabase);
 
     QObject::connect(&fileServer, &FileServer::sendVoiceMessage,[&messageServer](QJsonObject json){
-        messageServer.personalMessageProcess(json,&messageServer);
+        //messageServer.personalMessageProcess(json,&messageServer); change personalMessageProcess
     });
     QObject::connect(&fileServer, &FileServer::sendFileMessage,[&messageServer](QJsonObject json){
-        messageServer.personalMessageProcess(json,&messageServer);
+        //messageServer.personalMessageProcess(json,&messageServer); change personalMessageProcess
     });
 
     QObject::connect(&fileServer, &FileServer::sendNewGroupAvatarUrlToActiveSockets,[&messageServer](const QJsonObject& json){

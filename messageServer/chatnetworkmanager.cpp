@@ -20,7 +20,7 @@ ChatNetworkManager::ChatNetworkManager(QObject *parent) : QTcpServer(parent), lo
         QObject::connect(this,&ChatNetworkManager::setGroupAvatarInDatabase,DatabaseConnector::instance().getGroupManager().get(),&GroupManager::setGroupAvatar);
 
         QObject::connect(this,&ChatNetworkManager::personalMessageProcess,[](QJsonObject &json, ChatNetworkManager *manager) {
-            MessageProcessor::personalMessageProcess(json, manager);
+            //MessageProcessor::personalMessageProcess(json, manager);
         });
         QObject::connect(this,&ChatNetworkManager::sendNewGroupAvatarUrlToActiveSockets,[](const QJsonObject &json, ChatNetworkManager *manager) {
             MessageProcessor::sendNewGroupAvatarUrlToActiveSockets(json, manager);

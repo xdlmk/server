@@ -319,7 +319,7 @@ void ClientHandler::handleFlag(const QString &flag, const QByteArray &data)
         break;
     }
     case 11:
-        sendData("load_messages",db.getChatManager()->loadMessages(payload));
+        sendData("load_messages",db.getChatManager()->loadMessages(data));
         break;
     case 12:
         sendData("edit", db.getUserManager()->editUserProfile(data));
