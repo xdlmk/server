@@ -9,56 +9,55 @@ GroupManager::GroupManager(DatabaseConnector *dbConnector, QObject *parent)
     : QObject{parent} , databaseConnector(dbConnector), logger(Logger::instance())
 {}
 
-void GroupManager::createGroup(const QJsonObject &json, ChatNetworkManager *manager)
+void GroupManager::createGroup(const QByteArray &data, ChatNetworkManager *manager)
 {
+    QProtobufSerializer serializer;
+    groups::CreateGroupRequest request;
+    if (!request.deserialize(&serializer, data)) {
+        logger.log(Logger::DEBUG,"groupmanager.cpp::createGroup", "Failed deserialize proto");
+        return;
+    }
+
+    QString groupName = request.groupName();
+    quint64 creatorId = request.creatorId();
+    QString avatarUrl = request.avatarUrl();
+
     QSqlQuery createGroupQuery;
     QMap<QString, QVariant> params;
-    params[":group_name"] = json["groupName"].toString();
-    params[":created_by"] = json["creator_id"].toInt();
-    params[":avatar_url"] = json["avatar_url"].toString();
+    params[":group_name"] = groupName;
+    params[":created_by"] = creatorId;
+    params[":avatar_url"] = avatarUrl;
 
     if (!databaseConnector->executeQuery(createGroupQuery, "INSERT INTO group_chats (group_name, created_by, avatar_url) VALUES (:group_name, :created_by, :avatar_url)", params)) {
-        qWarning() << "Failed to insert into group_chats:" << createGroupQuery.lastError().text();
+        logger.log(Logger::INFO, "groupmanager.cpp::createGroup", "Failed to insert into group_chats: " + createGroupQuery.lastError().text());
     }
-    int groupId = createGroupQuery.lastInsertId().toInt();
+    quint64 groupId = createGroupQuery.lastInsertId().toInt();
+
+    QList<quint64> idsMembers = request.members();
+    idsMembers.append(creatorId);
 
     QSqlQuery insertMemberQuery;
-
-    QJsonArray membersArray = json["members"].toArray();
-
-    QList<int> idsMembers;
-    for (const QJsonValue &value : membersArray) {
-        QJsonObject memberObject = value.toObject();
-        int id = memberObject["id"].toInt();
-        idsMembers.append(id);
-    }
-    idsMembers.append(json["creator_id"].toInt());
-    for(int id : idsMembers) {
+    for(quint64 id : idsMembers) {
         QMap<QString, QVariant> memberParams;
         memberParams[":group_id"] = groupId;
         memberParams[":user_id"] = id;
 
         if (!databaseConnector->executeQuery(insertMemberQuery, "INSERT INTO group_members (group_id, user_id) VALUES (:group_id, :user_id)", memberParams)) {
-            qWarning() << "Failed to insert into group_members:" << insertMemberQuery.lastError().text();
+            logger.log(Logger::INFO, "groupmanager.cpp::createGroup", "Failed to insert into group_members: " + insertMemberQuery.lastError().text());
         }
     }
-    QJsonObject groupCreateJson;
-    groupCreateJson["flag"] = "group_message";
-    groupCreateJson["message"] = "Created this group";
+    chats::ChatMessage creationMessage;
+    creationMessage.setContent("created this group");
+    creationMessage.setGroupId(groupId);
+    creationMessage.setSenderId(creatorId);
+    creationMessage.setSpecialType("create");
 
-    groupCreateJson["sender_login"] = databaseConnector->getUserManager()->getUserLogin(json["creator_id"].toInt());
-    groupCreateJson["sender_id"] = json["creator_id"].toInt();
-    groupCreateJson["group_name"] = json["groupName"].toString();
-    groupCreateJson["group_id"] = groupId;
-    groupCreateJson["group_avatar_url"] = json["avatar_url"].toString();
-    groupCreateJson["special_type"] = "create";
-
-    //MessageProcessor::groupMessageProcess(groupCreateJson,manager); //method change
+    MessageProcessor::groupMessageProcess(creationMessage.serialize(&serializer), manager);
 }
 
-QList<messages::GroupInfoItem> GroupManager::getGroupInfo(const int &user_id)
+QList<chats::GroupInfoItem> GroupManager::getGroupInfo(const int &user_id)
 {
-    QList<messages::GroupInfoItem> response;
+    QList<chats::GroupInfoItem> response;
 
     if (!databaseConnector->getUserManager()->userIdCheck(user_id)) {
         return response;
@@ -73,15 +72,15 @@ QList<messages::GroupInfoItem> GroupManager::getGroupInfo(const int &user_id)
         QMap<QString, QVariant> params;
         params[":group_id"] = group_id;
         if (databaseConnector->executeQuery(queryName, "SELECT group_name, avatar_url, created_by FROM group_chats WHERE group_id = :group_id", params) && queryName.next()) {
-            messages::GroupInfoItem groupItem;
+            chats::GroupInfoItem groupItem;
             groupItem.setGroupId(group_id);
             groupItem.setGroupName(queryName.value(0).toString());
             groupItem.setAvatarUrl(queryName.value(1).toString());
             creator_id = queryName.value(2).toInt();
 
-            QList<messages::GroupMember> members;
+            QList<chats::GroupMember> members;
             for (int member_id : getGroupMembers(group_id)) {
-                messages::GroupMember memberItem;
+                chats::GroupMember memberItem;
                 memberItem.setId_proto(member_id);
                 memberItem.setUsername(databaseConnector->getUserManager()->getUserLogin(member_id));
                 memberItem.setStatus(member_id == creator_id ? "creator" : "member");

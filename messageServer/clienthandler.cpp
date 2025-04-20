@@ -273,7 +273,7 @@ void ClientHandler::handleFlag(const QString &flag, const QByteArray &data)
         MessageProcessor::personalMessageProcess(data, manager);
         break;
     case 6:
-        //MessageProcessor::groupMessageProcess(json, manager);
+        MessageProcessor::groupMessageProcess(data, manager);
         break;
     case 7:{
         chats::UpdatingChatsRequest request;
@@ -283,11 +283,11 @@ void ClientHandler::handleFlag(const QString &flag, const QByteArray &data)
         break;
     }
     case 8: {
-        messages::ChatsInfoRequest request;
+        chats::ChatsInfoRequest request;
         QProtobufSerializer serializer;
         request.deserialize(&serializer,data);
 
-        messages::ChatsInfoResponse response;
+        chats::ChatsInfoResponse response;
         response.setDialogsInfo(db.getChatManager()->getDialogInfo(request.userId()));
         response.setGroupsInfo(db.getGroupManager()->getGroupInfo(request.userId()));
         sendData("chats_info",response.serialize(&serializer));
@@ -331,7 +331,7 @@ void ClientHandler::handleFlag(const QString &flag, const QByteArray &data)
         //db.getGroupManager()->createGroup(json,manager);
         break;
     case 15:{
-        messages::Identifiers ident;
+        common::Identifiers ident;
         QProtobufSerializer serializer;
         ident.deserialize(&serializer,data);
         setIdentifiers(ident.userId());

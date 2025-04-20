@@ -1,5 +1,5 @@
 syntax = "proto3";
-package messages;
+package avatars;
 
 message AvatarsUpdateRequest {
     uint64 user_id = 1;

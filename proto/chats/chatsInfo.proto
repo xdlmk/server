@@ -1,5 +1,5 @@
 syntax = "proto3";
-package messages;
+package chats;
 
 message ChatsInfoRequest {
     uint64 user_id = 1;

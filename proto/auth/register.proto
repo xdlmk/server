@@ -1,5 +1,5 @@
 syntax = "proto3";
-package messages;
+package auth;
 
 message RegisterRequest {
     string login = 1;

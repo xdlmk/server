@@ -7,9 +7,9 @@ ChatManager::ChatManager(DatabaseConnector *dbConnector, QObject *parent)
     : QObject{parent} , databaseConnector(dbConnector), logger(Logger::instance())
 {}
 
-QList<messages::DialogInfoItem> ChatManager::getDialogInfo(const int &user_id)
+QList<chats::DialogInfoItem> ChatManager::getDialogInfo(const int &user_id)
 {
-    QList<messages::DialogInfoItem> dialogsInfoList;
+    QList<chats::DialogInfoItem> dialogsInfoList;
 
     if (!databaseConnector->getUserManager()->userIdCheck(user_id)) {
         return dialogsInfoList;
@@ -34,7 +34,7 @@ QList<messages::DialogInfoItem> ChatManager::getDialogInfo(const int &user_id)
                 userParams[":second_user_id"] = second_user_id;
 
                 if (databaseConnector->executeQuery(userQuery, "SELECT * FROM users WHERE id_user = :second_user_id", userParams) && userQuery.next()) {
-                    messages::DialogInfoItem dialogItem;
+                    chats::DialogInfoItem dialogItem;
                     dialogItem.setUserId(userQuery.value(0).toULongLong());
                     dialogItem.setUsername(userQuery.value(1).toString());
                     dialogItem.setUserlogin(userQuery.value(2).toString());

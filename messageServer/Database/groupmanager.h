@@ -11,6 +11,7 @@
 #include "../../Utils/logger.h"
 
 #include "generated_protobuf/chatsInfo.qpb.h"
+#include "generated_protobuf/createGroup.qpb.h"
 #include "generated_protobuf/deleteMember.qpb.h"
 #include "generated_protobuf/addMembers.qpb.h"
 #include <QtProtobuf/qprotobufserializer.h>
@@ -24,8 +25,8 @@ class GroupManager : public QObject
 public:
     explicit GroupManager(DatabaseConnector *dbConnector, QObject *parent = nullptr);
 
-    void createGroup(const QJsonObject &json, ChatNetworkManager *manager);
-    QList<messages::GroupInfoItem> getGroupInfo(const int &user_id);
+    void createGroup(const QByteArray &data, ChatNetworkManager *manager);
+    QList<chats::GroupInfoItem> getGroupInfo(const int &user_id);
     QList<int> getGroupMembers(int group_id);
     QByteArray addMemberToGroup(const groups::AddGroupMembersRequest &addMemberData);
     QByteArray removeMemberFromGroup(const groups::DeleteMemberRequest &request, bool &failed);

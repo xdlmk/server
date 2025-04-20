@@ -1,5 +1,5 @@
 syntax = "proto3";
-package messages;
+package common;
 
 message Identifiers {
     uint64 user_id = 1;

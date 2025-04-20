@@ -1,5 +1,5 @@
 syntax = "proto3";
-package messages;
+package profile;
 
 message EditProfileRequest {
     uint64 user_id = 1;

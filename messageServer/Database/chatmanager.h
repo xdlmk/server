@@ -26,7 +26,7 @@ class ChatManager : public QObject
 public:
     explicit ChatManager(DatabaseConnector *dbConnector, QObject *parent = nullptr);
 
-    QList<messages::DialogInfoItem> getDialogInfo(const int &user_id);
+    QList<chats::DialogInfoItem> getDialogInfo(const int &user_id);
     int getOrCreateDialog(int sender_id, int receiver_id);
 
     chats::UpdatingChatsResponse updatingChatsProcess(const quint64 &user_id);

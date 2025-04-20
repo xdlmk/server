@@ -6,10 +6,18 @@ message ChatMessage {
     string content = 2;
     string media_url = 3;
     string timestamp = 4;
+
     uint64 sender_id = 5;
-    uint64 receiver_id = 6;
-    uint64 group_id = 7;
-    string group_name = 8;
-    string sender_login = 9;
-    string receiver_login = 10;
+    string sender_login = 6;
+    string sender_avatar_url = 7;
+
+    uint64 receiver_id = 8;
+    string receiver_login = 9;
+    string receiver_avatar_url = 10;
+
+    uint64 group_id = 11;
+    string group_name = 12;
+    string group_avatar_url = 13;
+
+    string special_type = 14;
 }

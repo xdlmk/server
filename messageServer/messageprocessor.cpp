@@ -87,7 +87,9 @@ void MessageProcessor::groupMessageProcess(const QByteArray &data, ChatNetworkMa
     QString fileUrl = message.mediaUrl();
 
     message.setSenderLogin(DatabaseConnector::instance().getUserManager()->getUserLogin(sender_id));
+    message.setSenderAvatarUrl(DatabaseConnector::instance().getUserManager()->getUserAvatar(sender_id));
     message.setGroupName(DatabaseConnector::instance().getGroupManager()->getGroupName(group_id));
+    message.setGroupAvatarUrl(DatabaseConnector::instance().getGroupManager()->getGroupAvatar(group_id));
     message.setTimestamp(QDateTime::currentDateTime().toString(Qt::ISODate));
 
     quint64 message_id = DatabaseConnector::instance().getChatManager()->saveMessage(
