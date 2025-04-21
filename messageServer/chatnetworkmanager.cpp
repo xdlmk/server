@@ -22,9 +22,6 @@ ChatNetworkManager::ChatNetworkManager(QObject *parent) : QTcpServer(parent), lo
         QObject::connect(this,&ChatNetworkManager::personalMessageProcess,[](QJsonObject &json, ChatNetworkManager *manager) {
             //MessageProcessor::personalMessageProcess(json, manager);
         });
-        QObject::connect(this,&ChatNetworkManager::sendNewGroupAvatarUrlToActiveSockets,[](const QJsonObject &json, ChatNetworkManager *manager) {
-            MessageProcessor::sendNewGroupAvatarUrlToActiveSockets(json, manager);
-        });
         QObject::connect(this, &ChatNetworkManager::createGroup,[this](const QJsonObject& json){
             //DatabaseConnector::instance().getGroupManager()->createGroup(json,this);
         });

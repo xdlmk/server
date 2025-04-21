@@ -13,14 +13,17 @@
 
 #include "../Utils/logger.h"
 
+#include "generated_protobuf/getAvatar.qpb.h"
+#include <QProtobufSerializer>
+
 class FileHandler : public QObject {
     Q_OBJECT
 public:
     explicit FileHandler(QObject *parent = nullptr);
 
-    QJsonObject getAvatarFromServer(const QJsonObject &json);
-    QJsonObject makeAvatarUrlProcessing(const QJsonObject &json);
-    QString makeUrlProcessing(const QJsonObject &json);
+    QByteArray getAvatarFromServer(const QByteArray &data);
+    QByteArray makeAvatarUrlProcessing(const QByteArray &data);
+    QString makeUrlProcessing(const QString &fileName, const QString &fileExtension, const QByteArray &data);
     QJsonObject getFileFromUrlProcessing(const QString &fileUrl, const QString &flag);
     void voiceMessageProcessing(QJsonObject &voiceJson);
     void fileMessageProcessing(QJsonObject &fileJson);

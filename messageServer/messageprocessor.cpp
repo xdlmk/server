@@ -100,14 +100,6 @@ void MessageProcessor::groupMessageProcess(const QByteArray &data, ChatNetworkMa
     sendGroupMessageToActiveSockets(message.serialize(&serializer), "group_message", groupMembersIds, manager);
 }
 
-void MessageProcessor::sendNewGroupAvatarUrlToActiveSockets(const QJsonObject &json, ChatNetworkManager *manager)
-{
-    QList<int> groupMembersIds = DatabaseConnector::instance().getGroupManager()->getGroupMembers(json["id"].toInt());
-    QJsonObject jsonToSend = json;
-    //dont forget add time to proto like json["time"] = QDateTime::currentDateTime().toString("HH:mm");
-    //sendGroupMessageToActiveSockets(jsonToSend, manager, groupMembersIds);
-}
-
 QJsonObject MessageProcessor::createMessageJson(QJsonObject json, int message_id, int dialog_id)
 {
     QJsonObject messageJson;

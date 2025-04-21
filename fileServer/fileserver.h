@@ -27,7 +27,6 @@ signals:
     void setGroupAvatarInDatabase(const QString& avatarUrl, const int& group_id);
     void saveFileToDatabase(const QString& fileUrl);
     void createGroup(const QJsonObject& createGroupJson);
-    void sendNewGroupAvatarUrlToActiveSockets(const QJsonObject& json);
 private:
     FileHandler* fileHandler;
 

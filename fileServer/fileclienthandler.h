@@ -19,6 +19,10 @@
 #include "fileserver.h"
 
 #include "../Utils/logger.h"
+
+#include "generated_protobuf/envelope.qpb.h"
+#include "generated_protobuf/identifiers.qpb.h"
+#include "QProtobufSerializer"
 class FileClientHandler : public QObject
 {
     Q_OBJECT
@@ -31,10 +35,11 @@ private slots:
     void handleBytesWritten(qint64 bytes);
     void disconnectClient();
     void sendData(const QJsonObject &jsonToSend);
+    void sendData(const QString &flag, const QByteArray &data);
 signals:
     void clientDisconnected(FileClientHandler *client);
 private:
-    void processClientRequest(const QJsonObject &json);
+    void processClientRequest(const QString &flag, const QByteArray &data);
     void processSendQueue();
 
     int id;

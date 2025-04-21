@@ -328,7 +328,7 @@ void ClientHandler::handleFlag(const QString &flag, const QByteArray &data)
         sendData("avatars_update", db.getUserManager()->getCurrentAvatarUrlById(data));
         break;
     case 14:
-        //db.getGroupManager()->createGroup(json,manager);
+        db.getGroupManager()->createGroup(data, manager);
         break;
     case 15:{
         common::Identifiers ident;

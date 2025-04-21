@@ -3,57 +3,77 @@
 FileHandler::FileHandler(QObject *parent) : QObject{parent}, logger(Logger::instance())
 {}
 
-QJsonObject FileHandler::getAvatarFromServer(const QJsonObject &json)
+QByteArray FileHandler::getAvatarFromServer(const QByteArray &data)
 {
-    logger.log(Logger::DEBUG,"filehandler.cpp::getAvatarFromServer", "Method starts with url: " + json["avatar_url"].toString());
     QDir dir("uploads");
     if (!dir.exists()) {
         dir.mkpath(".");
     }
 
-    QFile file("uploads/" + json["avatar_url"].toString());
+    QProtobufSerializer serializer;
+    avatars::AvatarRequest request;
+    if(!request.deserialize(&serializer,data)){
+        logger.log(Logger::INFO,"filehandler.cpp::getAvatarFromServer", "Failed to deserialize protobuf");
+        return QByteArray();
+    }
+    logger.log(Logger::DEBUG,"filehandler.cpp::getAvatarFromServer", "Method starts with url: " + request.avatarUrl());
+
+    QFile file("uploads/" + request.avatarUrl());
 
     QByteArray fileData;
     if(file.open(QIODevice::ReadOnly)) {
         fileData = file.readAll();
         file.close();
     }
-    QJsonObject fileDataJson;
-    fileDataJson["flag"] = "avatarData";
-    fileDataJson["type"] = json["type"].toString();
-    fileDataJson["user_id"] = json["user_id"].toInt();
-    fileDataJson["avatar_url"] = json["avatar_url"].toString();
-    fileDataJson["avatarData"] = QString(fileData.toBase64());
 
-    return fileDataJson;
+    avatars::AvatarData response;
+    response.setType(request.type());
+    response.setUserId(request.userId());
+    response.setAvatarUrl(request.avatarUrl());
+    response.setAvatarData(fileData);
+
+    return response.serialize(&serializer);
 }
 
-QJsonObject FileHandler::makeAvatarUrlProcessing(const QJsonObject &json)
+QByteArray FileHandler::makeAvatarUrlProcessing(const QByteArray &data)
 {
-    QString avatarUrl = makeUrlProcessing(json);
-    int id = json["id"].toInt();
-    if(json["type"].toString() == "personal"){
+    QProtobufSerializer serializer;
+    avatars::AvatarFileData inMsg;
+    if (!inMsg.deserialize(&serializer, data)) {
+        logger.log(Logger::WARN, "filehandler.cpp::makeAvatarUrlProcessing", "Failed to deserialize AvatarFileData");
+        return QByteArray();
+    }
+
+    QString fileName = inMsg.fileName();
+    QString fileExtension = inMsg.fileExtension();
+    QString avatarUrl = makeUrlProcessing(fileName, fileExtension, inMsg.fileData());
+
+    quint64 id = inMsg.id_proto();
+    QString msgType = inMsg.type();
+
+    if(msgType == "personal"){
         emit setAvatarInDatabase(avatarUrl,id);
-    } else if(json["type"].toString() == "group"){
+    } else if(msgType == "group"){
         emit setGroupAvatarInDatabase(avatarUrl,id);
     }
 
-    QJsonObject avatarUrlJson;
+    avatars::AvatarRequest response;
+    response.setAvatarUrl(avatarUrl);
+    response.setUserId(id);
+    response.setType(msgType);
+
+    /*QJsonObject avatarUrlJson;
     avatarUrlJson["flag"] = "avatarUrl";
     avatarUrlJson["type"] = json["type"].toString();
     avatarUrlJson["avatar_url"] = avatarUrl;
-    avatarUrlJson["id"] = id;
+    avatarUrlJson["id"] = id;*/
 
-    return avatarUrlJson;
+    return response.serialize(&serializer);
 }
 
-QString FileHandler::makeUrlProcessing(const QJsonObject &json)
+QString FileHandler::makeUrlProcessing(const QString &fileName, const QString &fileExtension, const QByteArray &data)
 {
     logger.log(Logger::DEBUG,"filehandler.cpp::makeUrlProcessing", "Method starts");
-    QString fileName = json["fileName"].toString();
-    QString fileExtension = json["fileExtension"].toString();
-    QString fileDataBase64 = json["fileData"].toString();
-    QByteArray fileData = QByteArray::fromBase64(fileDataBase64.toUtf8());
 
     QString uniqueFileName = QUuid::createUuid().toString(QUuid::WithoutBraces) + "_" + fileName + "." + fileExtension;
 
@@ -66,13 +86,12 @@ QString FileHandler::makeUrlProcessing(const QJsonObject &json)
         logger.log(Logger::WARN,"filehandler.cpp::makeUrlProcessing", "Failed to save file: " + uniqueFileName + " with error: " + file.errorString());
         return "";
     }
-    file.write(fileData);
+    file.write(data);
     file.close();
 
     logger.log(Logger::DEBUG,"filehandler.cpp::makeUrlProcessing", "File saved as: " + uniqueFileName);
     emit saveFileToDatabase(uniqueFileName);
 
-    QJsonObject fileUrl;
     return uniqueFileName;
 }
 
@@ -154,7 +173,10 @@ void FileHandler::fileMessageProcessing(QJsonObject &fileJson)
 
 void FileHandler::createGroupWithAvatarProcessing(QJsonObject &createGroupJson)
 {
-    QString fileUrl = makeUrlProcessing(createGroupJson);
+    QString fileUrl = makeUrlProcessing(createGroupJson["fileName"].toString(),
+                                        createGroupJson["fileExtension"].toString(),
+                                        QByteArray::fromBase64(createGroupJson["fileData"].toString().toUtf8())
+                                        );
     createGroupJson.remove("fileData");
     createGroupJson["avatar_url"] = fileUrl;
     createGroupJson.remove("fileName");

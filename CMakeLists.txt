@@ -20,6 +20,7 @@ qt_add_protobuf(protosource
         ${CMAKE_SOURCE_DIR}/proto/search/search.proto
         ${CMAKE_SOURCE_DIR}/proto/profile/editProfile.proto
         ${CMAKE_SOURCE_DIR}/proto/avatars/avatarsUpdate.proto
+        ${CMAKE_SOURCE_DIR}/proto/avatars/getAvatar.proto
         ${CMAKE_SOURCE_DIR}/proto/common/identifiers.proto
         ${CMAKE_SOURCE_DIR}/proto/chats/chatsInfo.proto
         ${CMAKE_SOURCE_DIR}/proto/chats/updatingChats.proto
