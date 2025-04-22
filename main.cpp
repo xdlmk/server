@@ -18,8 +18,8 @@ int main(int argc, char *argv[])
     QObject::connect(&fileServer, &FileServer::sendFileMessage,[&messageServer](QJsonObject json){
         //messageServer.personalMessageProcess(json,&messageServer); change personalMessageProcess
     });
-    QObject::connect(&fileServer, &FileServer::createGroup,[&messageServer](QJsonObject json){
-        //messageServer.createGroup(json);
+    QObject::connect(&fileServer, &FileServer::createGroup,[&messageServer](const QByteArray &data){
+        messageServer.createGroup(data);
     });
     return a.exec();
 }

@@ -183,10 +183,10 @@ void FileClientHandler::processClientRequest(const QString &flag, const QByteArr
         sendData("avatarUrl", server->getFileHandler()->makeAvatarUrlProcessing(data));
         break;
     case 3:
-        //sendData(server->getFileHandler()->getFileFromUrlProcessing(json["fileUrl"].toString(), "fileData"));
+        sendData("fileData", server->getFileHandler()->getFileFromUrlProcessing(data, "fileData"));
         break;
     case 4:
-        //sendData(server->getFileHandler()->getFileFromUrlProcessing(json["fileUrl"].toString(), "voiceFileData"));
+        sendData("voiceFileData", server->getFileHandler()->getFileFromUrlProcessing(data, "voiceFileData"));
         break;
     case 5:
     case 6: {/*
@@ -203,8 +203,7 @@ void FileClientHandler::processClientRequest(const QString &flag, const QByteArr
         break;
     }
     case 9: {/*
-        QJsonObject createGroupJson = json;
-        server->getFileHandler()->createGroupWithAvatarProcessing(createGroupJson);*/
+        server->getFileHandler()->createGroupWithAvatarProcessing(data);*/
         break;
     }
     case 10:{

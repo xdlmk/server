@@ -21,7 +21,7 @@ signals:
     void setAvatarInDatabase(const QString &avatarUrl, const int &user_id);
     void setGroupAvatarInDatabase(const QString &avatarUrl, const int &group_id);
     void personalMessageProcess(QJsonObject &json,ChatNetworkManager *manager);
-    void createGroup(const QJsonObject& createGroupJson);
+    void createGroup(const QByteArray& data);
 private:
     QList<ClientHandler*> clients;
     void removeClient(ClientHandler *client);

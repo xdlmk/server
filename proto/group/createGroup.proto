@@ -8,5 +8,5 @@ message CreateGroupRequest {
     string avatar_url = 4;
     string file_name = 5;
     string file_extension = 6;
-    string file_data = 7;
+    bytes file_data = 7;
 }

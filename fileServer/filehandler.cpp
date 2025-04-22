@@ -95,25 +95,30 @@ QString FileHandler::makeUrlProcessing(const QString &fileName, const QString &f
     return uniqueFileName;
 }
 
-QJsonObject FileHandler::getFileFromUrlProcessing(const QString &fileUrl, const QString &flag)
+QByteArray FileHandler::getFileFromUrlProcessing(const QByteArray &data, const QString &flag)
 {
     logger.log(Logger::DEBUG,"filehandler.cpp::getFileFromUrlProcessing", "Method starts");
+    files::FileRequest request;
+    QProtobufSerializer serializer;
+    if(!request.deserialize(&serializer, data)) {
+        logger.log(Logger::INFO,"filehandler.cpp::getFileFromUrlProcessing", "Failed to deserialize FileRequest");
+    }
     QString folder;
     if(flag == "fileData") folder = "uploads";
     else if(flag == "voiceFileData") folder = "voice_messages";
 
+    const QString fileUrl = request.fileUrl();
     QFile file(folder + "/" + fileUrl);
     QByteArray fileData;
     if(file.open(QIODevice::ReadOnly)) {
         fileData = file.readAll();
         file.close();
     }
-    QJsonObject fileDataJson;
-    fileDataJson["flag"] = flag;
-    fileDataJson["fileName"] = fileUrl;
-    fileDataJson["fileData"] = QString(fileData.toBase64());
+    files::FileData response;
+    response.setFileName(fileUrl);
+    response.setFileData(fileData);
 
-    return fileDataJson;
+    return response.serialize(&serializer);
 }
 
 void FileHandler::voiceMessageProcessing(QJsonObject &voiceJson)
@@ -171,16 +176,22 @@ void FileHandler::fileMessageProcessing(QJsonObject &fileJson)
     emit saveFileToDatabase(uniqueFileName);
 }
 
-void FileHandler::createGroupWithAvatarProcessing(QJsonObject &createGroupJson)
+void FileHandler::createGroupWithAvatarProcessing(const QByteArray &createGroupData)
 {
-    QString fileUrl = makeUrlProcessing(createGroupJson["fileName"].toString(),
-                                        createGroupJson["fileExtension"].toString(),
-                                        QByteArray::fromBase64(createGroupJson["fileData"].toString().toUtf8())
-                                        );
-    createGroupJson.remove("fileData");
-    createGroupJson["avatar_url"] = fileUrl;
-    createGroupJson.remove("fileName");
-    createGroupJson.remove("fileExtension");
+    groups::CreateGroupRequest request;
+    QProtobufSerializer serializer;
+    if(!request.deserialize(&serializer, createGroupData)) {
+        logger.log(Logger::INFO,"filehandler.cpp::createGroupWithAvatarProcessing", "Failed to deserialize CreateGroupRequest");
+        return;
+    }
+    QString fileUrl = makeUrlProcessing(request.fileName(),
+                                        request.fileExtension(),
+                                        request.fileData());
+    request.setFileData(QByteArray());
+    request.setFileName(QString());
+    request.setFileExtension(QString());
 
-    emit createGroup(createGroupJson);
+    request.setAvatarUrl(fileUrl);
+
+    emit createGroup(request.serialize(&serializer));
 }
