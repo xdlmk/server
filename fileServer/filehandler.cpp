@@ -121,13 +121,22 @@ QByteArray FileHandler::getFileFromUrlProcessing(const QByteArray &data, const Q
     return response.serialize(&serializer);
 }
 
-void FileHandler::voiceMessageProcessing(QJsonObject &voiceJson)
+QByteArray FileHandler::voiceMessageProcessing(const QByteArray &voiceMsgData)
 {
     logger.log(Logger::DEBUG,"filehandler.cpp::voiceMessageProcessing", "Method starts");
-    QString fileName = voiceJson["fileName"].toString();
-    QString fileExtension = voiceJson["fileExtension"].toString();
-    QString fileDataBase64 = voiceJson["fileData"].toString();
-    QByteArray fileData = QByteArray::fromBase64(fileDataBase64.toUtf8());
+
+    chats::ChatMessage msg;
+    QProtobufSerializer serializer;
+    if (!msg.deserialize(&serializer, voiceMsgData)) {
+        logger.log(Logger::INFO, "filehandler.cpp::voiceMessageProcessing", "Failed to deserialize ChatMessage");
+        return QByteArray();
+    }
+
+    chats::FileData fileProtoData = msg.file();
+    QString fileName = fileProtoData.fileName();
+    QString fileExtension = fileProtoData.fileExtension();
+    QByteArray fileData = fileProtoData.fileData();
+
     QString uniqueFileName = QUuid::createUuid().toString(QUuid::WithoutBraces) + "_" + fileName + "." + fileExtension;
 
     QDir dir("voice_messages");
@@ -136,26 +145,33 @@ void FileHandler::voiceMessageProcessing(QJsonObject &voiceJson)
     }
     QFile file("voice_messages/" + uniqueFileName);
     if (!file.open(QIODevice::WriteOnly)) {
-        logger.log(Logger::WARN,"filehandler.cpp::voiceMessageProcessing", "Failed to save file: " + uniqueFileName + " with error: " + file.errorString());
+        logger.log(Logger::INFO,"filehandler.cpp::voiceMessageProcessing", "Failed to save file: " + uniqueFileName + " with error: " + file.errorString());
     }
     file.write(fileData);
     file.close();
-    voiceJson.remove("fileData");
-    voiceJson.remove("fileName");
-    voiceJson.remove("fileExtension");
-    voiceJson["fileUrl"] = uniqueFileName;
-    voiceJson["message"] = "";
+
+    fileProtoData = chats::FileData();
+    msg.setFile(fileProtoData);
+    msg.setMediaUrl(uniqueFileName);
+    msg.setSpecialType("voice_message");
 
     emit saveFileToDatabase(uniqueFileName);
+    return msg.serialize(&serializer);
 }
 
-void FileHandler::fileMessageProcessing(QJsonObject &fileJson)
+QByteArray FileHandler::fileMessageProcessing(const QByteArray &fileMsgData)
 {
     logger.log(Logger::DEBUG,"filehandler.cpp::fileMessageProcessing", "Method starts");
-    QString fileName = fileJson["fileName"].toString();
-    QString fileExtension = fileJson["fileExtension"].toString();
-    QString fileDataBase64 = fileJson["fileData"].toString();
-    QByteArray fileData = QByteArray::fromBase64(fileDataBase64.toUtf8());
+    chats::ChatMessage msg;
+    QProtobufSerializer serializer;
+    if(!msg.deserialize(&serializer,fileMsgData)){
+        logger.log(Logger::INFO, "filehandler.cpp::fileMessageProcessing", "Failed to deserialize ChatMessage");
+        return QByteArray();
+    }
+    chats::FileData fileProtoData = msg.file();
+    QString fileName = fileProtoData.fileName();
+    QString fileExtension = fileProtoData.fileExtension();
+    QByteArray fileData = fileProtoData.fileData();
     QString uniqueFileName = QUuid::createUuid().toString(QUuid::WithoutBraces) + "_" + fileName + "." + fileExtension;
 
     QDir dir("uploads");
@@ -164,16 +180,18 @@ void FileHandler::fileMessageProcessing(QJsonObject &fileJson)
     }
     QFile file("uploads/" + uniqueFileName);
     if (!file.open(QIODevice::WriteOnly)) {
-        logger.log(Logger::WARN,"filehandler.cpp::fileMessageProcessing", "Failed to save file: " + uniqueFileName + " with error: " + file.errorString());
+        logger.log(Logger::INFO,"filehandler.cpp::fileMessageProcessing", "Failed to save file: " + uniqueFileName + " with error: " + file.errorString());
+        return QByteArray();
     }
     file.write(fileData);
     file.close();
-    fileJson.remove("fileData");
-    fileJson.remove("fileName");
-    fileJson.remove("fileExtension");
-    fileJson["fileUrl"] = uniqueFileName;
+    fileProtoData = chats::FileData();
+    msg.setFile(fileProtoData);
+    msg.setMediaUrl(uniqueFileName);
+    msg.setSpecialType("file_message");
 
     emit saveFileToDatabase(uniqueFileName);
+    return msg.serialize(&serializer);
 }
 
 void FileHandler::createGroupWithAvatarProcessing(const QByteArray &createGroupData)

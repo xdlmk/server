@@ -1,6 +1,12 @@
 syntax = "proto3";
 package chats;
 
+message FileData {
+  string file_name = 1;
+  string file_extension = 2;
+  bytes file_data = 3;
+}
+
 message ChatMessage {
     uint64 message_id = 1;
     string content = 2;
@@ -20,4 +26,6 @@ message ChatMessage {
     string group_avatar_url = 13;
 
     string special_type = 14;
+
+    FileData file = 15;
 }

@@ -189,21 +189,19 @@ void FileClientHandler::processClientRequest(const QString &flag, const QByteArr
         sendData("voiceFileData", server->getFileHandler()->getFileFromUrlProcessing(data, "voiceFileData"));
         break;
     case 5:
-    case 6: {/*
-        QJsonObject voiceMessage = json;
-        server->getFileHandler()->voiceMessageProcessing(voiceMessage);
-        server->sendVoiceMessage(voiceMessage);*/
+        emit server->sendVoiceMessage("personal", server->getFileHandler()->voiceMessageProcessing(data));
         break;
-    }
+    case 6:
+        emit server->sendVoiceMessage("group", server->getFileHandler()->voiceMessageProcessing(data));
+        break;
     case 7:
-    case 8:{
-        /*QJsonObject fileMessage = json;
-        server->getFileHandler()->fileMessageProcessing(fileMessage);
-        server->sendFileMessage(fileMessage);*/
+        emit server->sendFileMessage("personal", server->getFileHandler()->fileMessageProcessing(data));
         break;
-    }
-    case 9: {/*
-        server->getFileHandler()->createGroupWithAvatarProcessing(data);*/
+    case 8:
+        emit server->sendFileMessage("group", server->getFileHandler()->fileMessageProcessing(data));
+        break;
+    case 9: {
+        server->getFileHandler()->createGroupWithAvatarProcessing(data);
         break;
     }
     case 10:{
