@@ -98,35 +98,6 @@ void FileClientHandler::disconnectClient()
     }
 }
 
-void FileClientHandler::sendData(const QJsonObject &jsonToSend)
-{
-    QJsonDocument sendDoc(jsonToSend);
-    if(jsonToSend.contains("avatarData") || jsonToSend.contains("fileData")){
-        QJsonObject logJson = jsonToSend;
-        logJson["avatarData"] = logJson["fileData"] = "here data";
-        logger.log(Logger::INFO,"fileclienthandler.cpp::sendData", "JSON to send (compact):" + QJsonDocument(logJson).toJson(QJsonDocument::Compact));
-    } else {
-        logger.log(Logger::INFO,"fileclienthandler.cpp::sendData", "JSON to send (compact):" + sendDoc.toJson(QJsonDocument::Compact));
-    }
-    bool shouldStartProcessing = false;
-    {
-        QMutexLocker lock(&mutex);
-        QByteArray jsonData = sendDoc.toJson(QJsonDocument::Compact);
-        if (sendQueue.size() >= MAX_QUEUE_SIZE) {
-            logger.log(Logger::DEBUG, "fileclienthandler.cpp::sendData", "Send queue overflow! Dropping message.");
-            return;
-        }
-        sendQueue.enqueue(QSharedPointer<QByteArray>::create(jsonData));
-        logger.log(Logger::INFO, "fileclienthandler.cpp::sendData", "Message added to queue. Queue size: " + QString::number(sendQueue.size()));
-        shouldStartProcessing = sendQueue.size() == 1;
-    }
-
-    if (shouldStartProcessing) {
-        logger.log(Logger::INFO, "fileclienthandler.cpp::sendData", "Starting to process the send queue.");
-        processSendQueue();
-    }
-}
-
 void FileClientHandler::sendData(const QString &flag, const QByteArray &data)
 {
     messages::Envelope envelope;

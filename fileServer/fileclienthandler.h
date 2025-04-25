@@ -34,7 +34,7 @@ private slots:
     void readClient();
     void handleBytesWritten(qint64 bytes);
     void disconnectClient();
-    void sendData(const QJsonObject &jsonToSend);
+
     void sendData(const QString &flag, const QByteArray &data);
 signals:
     void clientDisconnected(FileClientHandler *client);

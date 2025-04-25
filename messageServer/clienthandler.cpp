@@ -113,34 +113,6 @@ void ClientHandler::disconnectClient()
     }
 }
 
-void ClientHandler::sendJson(const QJsonObject &jsonToSend)
-{
-    QJsonDocument sendDoc(jsonToSend);
-    if(jsonToSend["flag"].toString() != "updating_chats"){
-        logger.log(Logger::INFO,"clienthandler.cpp::sendJson", "JSON to send (compact):" + sendDoc.toJson(QJsonDocument::Compact));
-    } else {
-        logger.log(Logger::INFO,"clienthandler.cpp::sendJson", "JSON to send (compact):" + jsonToSend["flag"].toString());
-    }
-
-    bool shouldStartProcessing = false;
-    {
-        QMutexLocker lock(&mutex);
-        QByteArray jsonData = sendDoc.toJson(QJsonDocument::Compact);
-        if (sendQueue.size() >= MAX_QUEUE_SIZE) {
-            logger.log(Logger::DEBUG, "clienthandler.cpp::sendJson", "Send queue overflow! Dropping message.");
-            return;
-        }
-        sendQueue.enqueue(QSharedPointer<QByteArray>::create(jsonData));
-        logger.log(Logger::INFO, "clienthandler.cpp::sendJson", "Message added to queue. Queue size: " + QString::number(sendQueue.size()));
-        shouldStartProcessing = sendQueue.size() == 1;
-    }
-
-    if (shouldStartProcessing) {
-        logger.log(Logger::INFO, "clienthandler.cpp::sendJson", "Starting to process the send queue.");
-        processSendQueue();
-    }
-}
-
 void ClientHandler::sendData(const QString &flag, const QByteArray &data)
 {
     messages::Envelope envelope;
@@ -160,14 +132,14 @@ void ClientHandler::sendData(const QString &flag, const QByteArray &data)
         QMutexLocker lock(&mutex);
         if (sendQueue.size() >= MAX_QUEUE_SIZE) {
             logger.log(
-                Logger::DEBUG, "clienthandler.cpp::sendJson",
+                Logger::DEBUG, "clienthandler.cpp::sendData",
                 "Send queue overflow! Dropping message."
                 );
             return;
         }
         sendQueue.enqueue(QSharedPointer<QByteArray>::create(envelopeData));
         logger.log(
-            Logger::INFO, "clienthandler.cpp::sendJson",
+            Logger::INFO, "clienthandler.cpp::sendData",
             "Message added to queue. Queue size: " + QString::number(sendQueue.size())
             );
         shouldStartProcessing = sendQueue.size() == 1;
@@ -176,78 +148,10 @@ void ClientHandler::sendData(const QString &flag, const QByteArray &data)
     if (shouldStartProcessing) {
         logger.log(
             Logger::INFO,
-            "clienthandler.cpp::sendJson",
+            "clienthandler.cpp::sendData",
             "Starting to process the send queue."
             );
         processSendQueue();
-    }
-}
-
-void ClientHandler::handleFlag(const QString &flag, QJsonObject &json, QTcpSocket *socket)
-{
-    logger.log(Logger::INFO, "clienthandler.cpp::handleFlag", "Get message for " + flag);
-    auto it = flagMap.find(flag.toStdString());
-    uint flagId = (it != flagMap.end()) ? it->second : 0;
-
-    auto& db = DatabaseConnector::instance();
-    switch (flagId) {
-    case 1:
-        //sendJson(db.getUserManager()->loginUser(json));
-        break;
-    case 2:
-        //sendJson(db.getUserManager()->registerUser(json));
-        break;
-    case 3: break;
-    case 4:
-        //sendJson(db.getUserManager()->searchUsers(json));
-        break;
-    case 5:
-        //MessageProcessor::personalMessageProcess(json, manager);
-        break;
-    case 6:
-        //MessageProcessor::groupMessageProcess(json, manager);
-        break;
-    case 7:
-        //sendJson(db.getChatManager()->updatingChatsProcess(json));
-        break;
-    case 8: {
-        //QJsonObject infoObject;
-        //infoObject["flag"] = "chats_info";
-        //infoObject["dialogs_info"] = db.getChatManager()->getDialogInfo(json);
-        //infoObject["groups_info"] = db.getGroupManager()->getGroupInfo(json);
-        //sendJson(infoObject);
-        break;
-    }
-    case 9: {
-        //QJsonObject rmJson = db.getGroupManager()->removeMemberFromGroup(json);
-        //QList<int> members = db.getGroupManager()->getGroupMembers(json["group_id"].toInt());
-        //MessageProcessor::sendGroupMessageToActiveSockets(rmJson, manager, members);
-        break;
-    }
-    case 10: {
-        //QJsonObject amJson = db.getGroupManager()->addMemberToGroup(json);
-        //QList<int> members = db.getGroupManager()->getGroupMembers(json["group_id"].toInt());
-        //MessageProcessor::sendGroupMessageToActiveSockets(amJson, manager, members);
-        break;
-    }
-    case 11:
-        //sendJson(db.getChatManager()->loadMessages(json));
-        break;
-    case 12:
-        //sendJson(db.getUserManager()->editUserProfile(json));
-        break;
-    case 13:
-        //sendJson(db.getUserManager()->getCurrentAvatarUrlById(json));
-        break;
-    case 14:
-        //db.getGroupManager()->createGroup(json,manager);
-        break;
-    case 15:
-        //setIdentifiers(json["user_id"].toInt());
-        break;
-    default:
-        logger.log(Logger::WARN,"clienthandler.cpp::handleFlag", "Unknown flag: " + flag);
-        break;
     }
 }
 

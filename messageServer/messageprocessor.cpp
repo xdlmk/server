@@ -46,7 +46,6 @@ void MessageProcessor::sendMessageToActiveSockets(const QByteArray &data, const 
     QList<ClientHandler*> clients = manager->getClients();
     for(ClientHandler *client : clients) {
         if(client->getId() == sender_id || client->getId() == receiver_id) client->sendData(flag,data);
-        //if(client->getId() == receiver_id && sender_id != receiver_id) client->sendData(flag,data);
     }
 }
 
@@ -59,14 +58,6 @@ void MessageProcessor::sendGroupMessageToActiveSockets(const QByteArray& data, c
         if (groupMembersIds.contains(client->getId())) {
             client->sendData(flag, data);
         }
-        /*if(client->getId() == sender_id) {
-            client->sendData(flag,data);// instead of sendToClient
-            //sendToClient(client, json, false);
-        }
-        if(groupMembersIds.contains(client->getId()) && sender_id != client->getId()) {
-            client->sendData(flag,data);// instead of sendToClient
-            //sendToClient(client, json, false);
-        }*/
     }
 }
 
@@ -98,41 +89,4 @@ void MessageProcessor::groupMessageProcess(const QByteArray &data, ChatNetworkMa
     message.setMessageId(message_id);
     QList<int> groupMembersIds = DatabaseConnector::instance().getGroupManager()->getGroupMembers(group_id);
     sendGroupMessageToActiveSockets(message.serialize(&serializer), "group_message", groupMembersIds, manager);
-}
-
-QJsonObject MessageProcessor::createMessageJson(QJsonObject json, int message_id, int dialog_id)
-{
-    QJsonObject messageJson;
-    messageJson["flag"] = "personal_message";
-    messageJson["message_id"] = message_id;
-    messageJson["message"] = json["message"];
-    messageJson["dialog_id"] = dialog_id;
-
-    messageJson["sender_login"] = json["sender_login"];
-    messageJson["sender_id"] = json["sender_id"];
-    messageJson["sender_avatar_url"] = json["sender_avatar_url"];
-
-    messageJson["receiver_login"] = json["receiver_login"];
-    messageJson["receiver_id"] = json["receiver_id"];
-    messageJson["receiver_avatar_url"] = json["receiver_avatar_url"];
-
-    messageJson["fileUrl"] = json["fileUrl"];
-    messageJson["time"] = QDateTime::currentDateTime().toString("HH:mm");
-    return messageJson;
-}
-
-void MessageProcessor::sendToClient(ClientHandler *client, QJsonObject& messageJson, bool isSender)
-{
-
-    Logger::instance().log(Logger::INFO,"messageprocessor.cpp::sendToClient", "Method starts");
-    if(isSender) {
-        messageJson.remove("sender_login");
-        messageJson.remove("sender_id");
-        messageJson.remove("sender_avatar_url");
-    } else {
-        messageJson.remove("receiver_login");
-        messageJson.remove("receiver_id");
-        messageJson.remove("receiver_avatar_url");
-    }
-    client->sendJson(messageJson);
 }

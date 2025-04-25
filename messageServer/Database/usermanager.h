@@ -31,22 +31,12 @@ class UserManager : public QObject
 public:
     explicit UserManager(DatabaseConnector *dbConnector, QObject *parent = nullptr);
 
-    QJsonObject loginUser(QJsonObject json);
-    QByteArray loginUser(QByteArray data);
-
-    QJsonObject registerUser(const QJsonObject &json);
+    QByteArray loginUser(const QByteArray &data);
     QByteArray registerUser(const QByteArray &data);
-
-    QJsonObject searchUsers(const QJsonObject &json);
     QByteArray searchUsers(const QByteArray &data);
-
-    QJsonObject editUserProfile(const QJsonObject &dataEditProfile);
     QByteArray editUserProfile(const QByteArray &data);
-
-    QJsonObject getCurrentAvatarUrlById(const QJsonObject &avatarsUpdate);
     QByteArray getCurrentAvatarUrlById(const QByteArray &data);
 
-    int getUserId(const QString &userlogin);
     bool userIdCheck(const int user_id);
     QString getUserLogin(int user_id);
     QList<int> getUserInterlocutorsIds(int user_id);

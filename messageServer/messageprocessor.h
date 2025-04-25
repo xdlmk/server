@@ -23,9 +23,6 @@ public:
     static void sendMessageToActiveSockets(const QByteArray &data, const QString &flag, const quint64 &sender_id, const quint64 &receiver_id, ChatNetworkManager *manager);
     static void sendGroupMessageToActiveSockets(const QByteArray& data, const QString& flag, QList<int> groupMembersIds, ChatNetworkManager *manager);
     static void groupMessageProcess(const QByteArray &data, ChatNetworkManager *manager);
-private:
-    static QJsonObject createMessageJson(QJsonObject json, int message_id, int dialog_id);
-    static void sendToClient(ClientHandler *client, QJsonObject& messageJson, bool isSender);
 };
 
 #endif // MESSAGEPROCESSOR_H

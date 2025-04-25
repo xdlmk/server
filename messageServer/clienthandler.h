@@ -38,7 +38,6 @@ public:
     bool setIdentifiers(const int& id);
     int getId();
 
-    void sendJson(const QJsonObject &jsonToSend);
     void sendData(const QString &flag, const QByteArray &data);
 signals:
     void clientDisconnected(ClientHandler *client);
@@ -47,7 +46,6 @@ private slots:
     void handleBytesWritten(qint64 bytes);
     void disconnectClient();
 private:
-    void handleFlag(const QString &flag, QJsonObject &json, QTcpSocket *socket);
     void handleFlag(const QString &flag, const QByteArray &data);
 
     void processSendQueue();

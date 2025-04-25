@@ -9,47 +9,7 @@ UserManager::UserManager(DatabaseConnector *dbConnector, QObject *parent)
     : QObject{parent} , databaseConnector(dbConnector), logger(Logger::instance())
 { }
 
-QJsonObject UserManager::loginUser(QJsonObject json)
-{
-    QString login = json["login"].toString();
-    QString password = json["password"].toString();
-    QJsonObject jsonLogin;
-    jsonLogin["flag"] = "login";
-    QMap<QString, QVariant> params;
-    params[":userlogin"] = login;
-    QSqlQuery query;
-
-    if (!databaseConnector->executeQuery(query, "SELECT password_hash FROM users WHERE userlogin = :userlogin",params)) {
-        logger.log(Logger::DEBUG,"usermanager.cpp::loginUser", "Error executing query during password_hash: " + query.lastError().text());
-        jsonLogin["success"] = "error";
-    } else {
-        query.next();
-        QString passwordHash = query.value(0).toString();
-        if (checkPassword(password,passwordHash)) {
-            jsonLogin["success"] = "ok";
-            jsonLogin["userlogin"] = json["login"];
-            jsonLogin["password"] = json["password"];
-
-            int id;
-            QString avatar_url;
-            if(databaseConnector->executeQuery(query, "SELECT avatar_url, id_user FROM users WHERE userlogin = :userlogin",params)) {
-                if (query.next()) {
-                    avatar_url = query.value(0).toString();
-                    id = query.value(1).toInt();
-
-                    jsonLogin["avatar_url"] = avatar_url;
-                    jsonLogin["user_id"] = id;
-                } else {
-                    logger.log(Logger::DEBUG,"usermanager.cpp::loginUser", "No user found with login: " + login);
-                    jsonLogin["success"] = "poor";
-                }
-            }
-        } else jsonLogin["success"] = "poor";
-    }
-    return jsonLogin;
-}
-
-QByteArray UserManager::loginUser(QByteArray data)
+QByteArray UserManager::loginUser(const QByteArray &data)
 {
     QProtobufSerializer serializer;
     auth::LoginRequest request;
@@ -93,42 +53,6 @@ QByteArray UserManager::loginUser(QByteArray data)
     }
 
     return response.serialize(&serializer);
-}
-
-QJsonObject UserManager::registerUser(const QJsonObject &json)
-{
-    QString login = json["login"].toString();
-    QString password = hashPassword(json["password"].toString());
-    QJsonObject jsonReg;
-    jsonReg["flag"] = "reg";
-
-    QMap<QString, QVariant> params;
-    params[":userlogin"] = login;
-    QSqlQuery query;
-    if (!databaseConnector->executeQuery(query,"SELECT COUNT(*) FROM users WHERE userlogin = :userlogin",params)) {
-        logger.log(Logger::DEBUG,"usermanager.cpp::registerUser", "Error executing SELECT query: " + query.lastError().text());
-        jsonReg["success"] = "error";
-    } else {
-        query.next();
-        int count = query.value(0).toInt();
-        if (count > 0) {
-            jsonReg["success"] = "poor";
-            jsonReg["errorMes"] = "This username is taken";
-
-        } else {
-            jsonReg["success"] = "ok";
-
-            QMap<QString, QVariant> insertParams;
-            insertParams[":username"] = login;
-            insertParams[":password_hash"] = password;
-            if (!databaseConnector->executeQuery(query,"INSERT INTO `users` (`username`, `password_hash`, `userlogin`) VALUES (:username, :password_hash, :username);",insertParams)) {
-                logger.log(Logger::DEBUG,"usermanager.cpp::registerUser", "Error executing INSERT query: " + query.lastError().text());
-                jsonReg["success"] = "error";
-                jsonReg["errorMes"] = "Error with insert to database";
-            }
-        }
-    }
-    return jsonReg;
 }
 
 QByteArray UserManager::registerUser(const QByteArray &data)
@@ -178,37 +102,6 @@ QByteArray UserManager::registerUser(const QByteArray &data)
     return response.serialize(&serializer);
 }
 
-QJsonObject UserManager::searchUsers(const QJsonObject &json)
-{
-    QString searchable = json["searchable"].toString();
-
-    QJsonArray jsonArray;
-    QMap<QString, QVariant> params;
-    params[":keyword"] = "%" + searchable + "%";
-    QSqlQuery query;
-    if (databaseConnector->executeQuery(query, "SELECT id_user, userlogin, avatar_url FROM users WHERE userlogin LIKE :keyword", params)) {
-        while (query.next()) {
-            int id = query.value(0).toInt();
-            QString userlogin = query.value(1).toString();
-            QString avatar_url = query.value(2).toString();
-
-            QJsonObject userObject;
-            userObject["id"] = id;
-            userObject["userlogin"] = userlogin;
-            userObject["avatar_url"] = avatar_url;
-
-            jsonArray.append(userObject);
-        }
-    } else {
-        logger.log(Logger::DEBUG,"usermanager.cpp::searchUsers", "Error executing query: " + query.lastError().text());
-    }
-
-    QJsonObject searchJson;
-    searchJson["flag"] = "search";
-    searchJson["results"] = jsonArray;
-    return searchJson;
-}
-
 QByteArray UserManager::searchUsers(const QByteArray &data)
 {
     QProtobufSerializer serializer;
@@ -241,41 +134,6 @@ QByteArray UserManager::searchUsers(const QByteArray &data)
     }
 
     return response.serialize(&serializer);
-}
-
-QJsonObject UserManager::editUserProfile(const QJsonObject &dataEditProfile)
-{
-    QString editable = dataEditProfile["editable"].toString();
-    QString editInformation = dataEditProfile["editInformation"].toString();
-    int user_id = dataEditProfile["user_id"].toInt();
-    QString bindingValue;
-    if(editable == "Name") bindingValue = "username";
-    else if(editable == "Phone number") bindingValue = "phone_number";
-    else if(editable == "Username") bindingValue = "userlogin";
-
-    QMap<QString, QVariant> params;
-    params[":" + bindingValue] = editInformation;
-    params[":id_user"] = user_id;
-    QSqlQuery query;
-
-    QJsonObject editResults;
-    editResults["flag"] = "edit";
-
-    if (!databaseConnector->executeQuery(query,"UPDATE users SET " + bindingValue + " = :" + bindingValue + " WHERE id_user = :id_user",params)) {
-        if (query.lastError().text().contains("Duplicate entry") or query.lastError().nativeErrorCode() == "1062") {
-            editResults["status"] = "poor";
-            editResults["error"] = "Unique error";
-            return editResults;
-        }
-        editResults["status"] = "poor";
-        editResults["error"] = "Unknown error";
-        return editResults;
-    }
-    editResults["status"] = "ok";
-    editResults["editable"] = editable;
-    editResults["editInformation"] =  editInformation;
-
-    return editResults;
 }
 
 QByteArray UserManager::editUserProfile(const QByteArray &data)
@@ -324,38 +182,6 @@ QByteArray UserManager::editUserProfile(const QByteArray &data)
     return response.serialize(&serializer);
 }
 
-QJsonObject UserManager::getCurrentAvatarUrlById(const QJsonObject &avatarsUpdate)
-{
-    int user_id = avatarsUpdate["user_id"].toInt();
-    QJsonObject avatarsUpdateJson;
-    avatarsUpdateJson["flag"] = "avatars_update";
-
-    QJsonArray avatarsArray;
-    QJsonArray groupsAvatarsArray;
-
-    QList<int> userGroups = databaseConnector->getGroupManager()->getUserGroups(user_id);
-    QList<int> userDialogs = getUserInterlocutorsIds(user_id);
-
-    for (const int &interlocutorId : userDialogs) {
-        QString avatarUrl = getUserAvatar(interlocutorId);
-        QJsonObject avatarObject;
-        avatarObject["id"] = interlocutorId;
-        avatarObject["avatar_url"] = avatarUrl;
-        avatarsArray.append(avatarObject);
-    }
-
-    for (const int &group_id : userGroups) {
-        QString avatarUrl = databaseConnector->getGroupManager()->getGroupAvatar(group_id);
-        QJsonObject avatarObject;
-        avatarObject["group_id"] = group_id;
-        avatarObject["avatar_url"] = avatarUrl;
-        groupsAvatarsArray.append(avatarObject);
-    }
-    avatarsUpdateJson["avatars"] = avatarsArray;
-    avatarsUpdateJson["groups_avatars"] = groupsAvatarsArray;
-    return avatarsUpdateJson;
-}
-
 QByteArray UserManager::getCurrentAvatarUrlById(const QByteArray &data)
 {
     QProtobufSerializer serializer;
@@ -393,18 +219,6 @@ QByteArray UserManager::getCurrentAvatarUrlById(const QByteArray &data)
     response.setGroupsAvatars(groupAvatars);
 
     return response.serialize(&serializer);
-}
-
-int UserManager::getUserId(const QString &userlogin)
-{
-    QMap<QString, QVariant> params;
-    params[":userlogin"] = userlogin;
-    QSqlQuery query;
-    if (databaseConnector->executeQuery(query,"SELECT id_user FROM users WHERE userlogin = :userlogin",params) && query.next()) {
-        return query.value(0).toInt();
-    }
-    logger.log(Logger::DEBUG,"usermanager.cpp::getUserId", "UserId not found: " + userlogin);
-    return -1;
 }
 
 bool UserManager::userIdCheck(const int user_id)
