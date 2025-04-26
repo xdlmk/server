@@ -3,8 +3,6 @@
 
 #include <QObject>
 
-#include <QJsonObject>
-#include <QJsonDocument>
 #include <QList>
 
 #include "../Utils/logger.h"

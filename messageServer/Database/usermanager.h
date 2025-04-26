@@ -2,16 +2,13 @@
 #define USERMANAGER_H
 
 #include <QObject>
+#include <QTcpSocket>
 
-#include <QJsonObject>
-#include <QJsonArray>
 #include <QString>
-
 #include <QCryptographicHash>
 
 #include <QSqlQuery>
 #include <QSqlError>
-#include <QTcpSocket>
 
 #include "../../Utils/logger.h"
 

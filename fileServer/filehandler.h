@@ -8,7 +8,6 @@
 #include <QUuid>
 
 #include <QString>
-#include <QJsonObject>
 #include <QDebug>
 
 #include "../Utils/logger.h"

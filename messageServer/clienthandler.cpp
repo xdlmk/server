@@ -52,10 +52,6 @@ void ClientHandler::readClient()
 
         if (socket->bytesAvailable() < blockSize) return;
 
-        /*QByteArray jsonData;
-        jsonData.resize(blockSize);
-        in.readRawData(jsonData.data(), blockSize);*/
-
         QByteArray envelopeData;
         envelopeData.resize(blockSize);
         in.readRawData(envelopeData.data(), blockSize);
@@ -72,17 +68,6 @@ void ClientHandler::readClient()
         QByteArray payload = envelope.payload();
 
         handleFlag(flag, payload);
-
-        /*QJsonDocument doc = QJsonDocument::fromJson(jsonData);
-        if (doc.isNull()) {
-            blockSize = 0;
-            return;
-        }
-
-        QJsonObject json = doc.object();
-        QString flag = json["flag"].toString();
-
-        handleFlag(flag,json,socket);*/
 
         blockSize = 0;
     }

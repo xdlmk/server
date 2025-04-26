@@ -62,12 +62,6 @@ QByteArray FileHandler::makeAvatarUrlProcessing(const QByteArray &data)
     response.setUserId(id);
     response.setType(msgType);
 
-    /*QJsonObject avatarUrlJson;
-    avatarUrlJson["flag"] = "avatarUrl";
-    avatarUrlJson["type"] = json["type"].toString();
-    avatarUrlJson["avatar_url"] = avatarUrl;
-    avatarUrlJson["id"] = id;*/
-
     return response.serialize(&serializer);
 }
 

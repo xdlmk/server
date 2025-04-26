@@ -3,9 +3,6 @@
 
 #include <QObject>
 
-#include <QJsonObject>
-#include <QJsonArray>
-
 #include <QSqlQuery>
 
 #include "groupmanager.h"

@@ -3,7 +3,6 @@
 
 #include <QObject>
 #include <QTcpServer>
-#include <QJsonObject>
 
 #include "FileHandler.h"
 #include "../Utils/logger.h"

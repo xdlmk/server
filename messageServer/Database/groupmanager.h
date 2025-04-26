@@ -3,9 +3,6 @@
 
 #include <QObject>
 
-#include <QJsonObject>
-#include <QJsonArray>
-
 #include "usermanager.h"
 
 #include "../../Utils/logger.h"

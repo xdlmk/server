@@ -39,10 +39,6 @@ void FileClientHandler::readClient()
 
         if (fileSocket->bytesAvailable() < blockSize) return;
 
-        /*QByteArray data;
-        data.resize(blockSize);
-        in.readRawData(data.data(), blockSize);*/
-
         QByteArray envelopeData;
         envelopeData.resize(blockSize);
         in.readRawData(envelopeData.data(), blockSize);
@@ -59,15 +55,6 @@ void FileClientHandler::readClient()
         QByteArray payload = envelope.payload();
 
         processClientRequest(flag, payload);
-
-        /*QJsonDocument doc = QJsonDocument::fromJson(data);
-        if (doc.isNull()) {
-            logger.log(Logger::DEBUG,"fileclienthandler.cpp::readClient", "Error with JSON doc check, doc is null");
-            blockSize = 0;
-            return;
-        }
-        QJsonObject json = doc.object();*/
-
 
         blockSize = 0;
     }

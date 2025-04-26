@@ -4,9 +4,6 @@
 #include <QObject>
 #include <QTcpSocket>
 
-#include <QJsonDocument>
-#include <QJsonObject>
-
 #include <QTimer>
 #include <QThread>
 #include <QMutex>
