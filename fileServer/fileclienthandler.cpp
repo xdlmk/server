@@ -39,19 +39,22 @@ void FileClientHandler::readClient()
 
         if (fileSocket->bytesAvailable() < blockSize) return;
 
-        QByteArray data;
-        data.resize(blockSize);
-        in.readRawData(data.data(), blockSize);
+        QByteArray envelopeData;
+        envelopeData.resize(blockSize);
+        in.readRawData(envelopeData.data(), blockSize);
 
-        QJsonDocument doc = QJsonDocument::fromJson(data);
-        if (doc.isNull()) {
-            logger.log(Logger::DEBUG,"fileclienthandler.cpp::readClient", "Error with JSON doc check, doc is null");
+        QProtobufSerializer serializer;
+        messages::Envelope envelope;
+        if (!envelope.deserialize(&serializer, envelopeData)) {
+            logger.log(Logger::WARN, "clienthandler.cpp::readClient", "Failed to deserialize protobuf");
             blockSize = 0;
             return;
         }
-        QJsonObject json = doc.object();
 
-        processClientRequest(json);
+        QString flag = envelope.flag();
+        QByteArray payload = envelope.payload();
+
+        processClientRequest(flag, payload);
 
         blockSize = 0;
     }
@@ -82,81 +85,92 @@ void FileClientHandler::disconnectClient()
     }
 }
 
-void FileClientHandler::sendData(const QJsonObject &jsonToSend)
+void FileClientHandler::sendData(const QString &flag, const QByteArray &data)
 {
-    QJsonDocument sendDoc(jsonToSend);
-    if(jsonToSend.contains("avatarData") || jsonToSend.contains("fileData")){
-        QJsonObject logJson = jsonToSend;
-        logJson["avatarData"] = logJson["fileData"] = "here data";
-        logger.log(Logger::INFO,"fileclienthandler.cpp::sendData", "JSON to send (compact):" + QJsonDocument(logJson).toJson(QJsonDocument::Compact));
-    } else {
-        logger.log(Logger::INFO,"fileclienthandler.cpp::sendData", "JSON to send (compact):" + sendDoc.toJson(QJsonDocument::Compact));
-    }
+    messages::Envelope envelope;
+    envelope.setFlag(flag);
+    envelope.setPayload(data);
+
+    QProtobufSerializer serializer;
+    QByteArray envelopeData = envelope.serialize(&serializer);
+
+    logger.log(
+        Logger::INFO,
+        "fileclienthandler.cpp::sendData",
+        "Sending envelope for flag: " + flag
+        );
+
     bool shouldStartProcessing = false;
     {
         QMutexLocker lock(&mutex);
-        QByteArray jsonData = sendDoc.toJson(QJsonDocument::Compact);
         if (sendQueue.size() >= MAX_QUEUE_SIZE) {
-            logger.log(Logger::DEBUG, "fileclienthandler.cpp::sendData", "Send queue overflow! Dropping message.");
+            logger.log(
+                Logger::DEBUG, "fileclienthandler.cpp::sendData",
+                "Send queue overflow! Dropping message."
+                );
             return;
         }
-        sendQueue.enqueue(QSharedPointer<QByteArray>::create(jsonData));
-        logger.log(Logger::INFO, "fileclienthandler.cpp::sendData", "Message added to queue. Queue size: " + QString::number(sendQueue.size()));
+        sendQueue.enqueue(QSharedPointer<QByteArray>::create(envelopeData));
+        logger.log(
+            Logger::INFO, "fileclienthandler.cpp::sendData",
+            "Message added to queue. Queue size: " + QString::number(sendQueue.size())
+            );
         shouldStartProcessing = sendQueue.size() == 1;
     }
 
     if (shouldStartProcessing) {
-        logger.log(Logger::INFO, "fileclienthandler.cpp::sendData", "Starting to process the send queue.");
+        logger.log(
+            Logger::INFO,
+            "fileclienthandler.cpp::sendData",
+            "Starting to process the send queue."
+            );
         processSendQueue();
     }
 }
 
-void FileClientHandler::processClientRequest(const QJsonObject &json)
+void FileClientHandler::processClientRequest(const QString &flag, const QByteArray &data)
 {
-    logger.log(Logger::INFO, "fileclienthandler.cpp::processClientRequest", "Get message for " + json["flag"].toString());
-    auto it = flagMap.find(json["flag"].toString().toStdString());
+    logger.log(Logger::INFO, "fileclienthandler.cpp::processClientRequest", "Get message for " + flag);
+    auto it = flagMap.find(flag.toStdString());
     uint flagId = (it != flagMap.end()) ? it->second : 0;
     switch (flagId) {
     case 1:
-        sendData(server->getFileHandler()->getAvatarFromServer(json));
+        sendData("avatarData", server->getFileHandler()->getAvatarFromServer(data));
         break;
     case 2:
-        if (json["type"].toString() == "personal") {
-            sendData(server->getFileHandler()->makeAvatarUrlProcessing(json));
-        } else if (json["type"].toString() == "group") {
-            server->sendNewGroupAvatarUrlToActiveSockets(server->getFileHandler()->makeAvatarUrlProcessing(json));
-        }
+        sendData("avatarUrl", server->getFileHandler()->makeAvatarUrlProcessing(data));
         break;
     case 3:
-        sendData(server->getFileHandler()->getFileFromUrlProcessing(json["fileUrl"].toString(), "fileData"));
+        sendData("fileData", server->getFileHandler()->getFileFromUrlProcessing(data, "fileData"));
         break;
     case 4:
-        sendData(server->getFileHandler()->getFileFromUrlProcessing(json["fileUrl"].toString(), "voiceFileData"));
+        sendData("voiceFileData", server->getFileHandler()->getFileFromUrlProcessing(data, "voiceFileData"));
         break;
     case 5:
-    case 6: {
-        QJsonObject voiceMessage = json;
-        server->getFileHandler()->voiceMessageProcessing(voiceMessage);
-        server->sendVoiceMessage(voiceMessage);
+        emit server->sendVoiceMessage("personal", server->getFileHandler()->voiceMessageProcessing(data));
         break;
-    }
+    case 6:
+        emit server->sendVoiceMessage("group", server->getFileHandler()->voiceMessageProcessing(data));
+        break;
     case 7:
-    case 8:{
-        QJsonObject fileMessage = json;
-        server->getFileHandler()->fileMessageProcessing(fileMessage);
-        server->sendFileMessage(fileMessage);
+        emit server->sendFileMessage("personal", server->getFileHandler()->fileMessageProcessing(data));
         break;
-    }
+    case 8:
+        emit server->sendFileMessage("group", server->getFileHandler()->fileMessageProcessing(data));
+        break;
     case 9: {
-        QJsonObject createGroupJson = json;
-        server->getFileHandler()->createGroupWithAvatarProcessing(createGroupJson);
+        server->getFileHandler()->createGroupWithAvatarProcessing(data);
         break;
     }
-    case 10:
-        setIdentifiers(json["user_id"].toInt());
+    case 10:{
+        common::Identifiers ident;
+        QProtobufSerializer serializer;
+        ident.deserialize(&serializer,data);
+        setIdentifiers(ident.userId());
         break;
+    }
     default:
-        logger.log(Logger::WARN,"fileclienthandler.cpp::processClientRequest", "Unknown flag: " + json["flag"].toString());
+        logger.log(Logger::INFO,"fileclienthandler.cpp::processClientRequest", "Unknown flag: " + flag);
         break;
     }
 }

@@ -3,14 +3,17 @@
 
 #include <QObject>
 
-#include <QJsonObject>
-#include <QJsonArray>
-
 #include <QSqlQuery>
 
 #include "groupmanager.h"
 
 #include "../../Utils/logger.h"
+
+#include "generated_protobuf/chatsInfo.qpb.h"
+#include "generated_protobuf/updatingChats.qpb.h"
+#include "generated_protobuf/loadMessages.qpb.h"
+#include "generated_protobuf/chatMessage.qpb.h"
+#include <QtProtobuf/qprotobufserializer.h>
 
 class DatabaseConnector;
 
@@ -20,18 +23,19 @@ class ChatManager : public QObject
 public:
     explicit ChatManager(DatabaseConnector *dbConnector, QObject *parent = nullptr);
 
-    QJsonObject getDialogInfo(const QJsonObject &json);
+    QList<chats::DialogInfoItem> getDialogInfo(const int &user_id);
     int getOrCreateDialog(int sender_id, int receiver_id);
 
-    QJsonObject updatingChatsProcess(QJsonObject json);
+    chats::UpdatingChatsResponse updatingChatsProcess(const quint64 &user_id);
 
     int saveMessage(int dialogId, int senderId, int receiverId, const QString &message, const QString &fileUrl, const QString &flag);
-    QJsonObject loadMessages(const QJsonObject &requestJson);
+    QByteArray loadMessages(const QByteArray &requestData);
 
 private:
-    void getUserMessages(QJsonObject json, QJsonArray &jsonMessageArray);
+    QList<chats::ChatMessage> getUserMessages(const quint64 user_id, bool &failed);
     QList<int> getUserDialogs(int user_id);
-    void appendMessageObject(QSqlQuery &query, QJsonArray &jsonMessageArray);
+    chats::ChatMessage generatePersonalMessageObject(QSqlQuery &query);
+    chats::ChatMessage generateGroupMessageObject(QSqlQuery &query);
 
     DatabaseConnector *databaseConnector;
 

@@ -3,7 +3,6 @@
 
 #include <QObject>
 #include <QTcpServer>
-#include <QJsonObject>
 
 #include "FileHandler.h"
 #include "../Utils/logger.h"
@@ -20,14 +19,13 @@ protected:
 private slots:
     void removeClient(FileClientHandler *client);
 signals:
-    void sendFileMessage(QJsonObject fileJson);
-    void sendVoiceMessage(QJsonObject voiceJson);
+    void sendFileMessage(const QString& flag, const QByteArray &data);
+    void sendVoiceMessage(const QString& flag, const QByteArray &data);
 
     void setAvatarInDatabase(const QString& avatarUrl, const int& user_id);
     void setGroupAvatarInDatabase(const QString& avatarUrl, const int& group_id);
     void saveFileToDatabase(const QString& fileUrl);
-    void createGroup(const QJsonObject& createGroupJson);
-    void sendNewGroupAvatarUrlToActiveSockets(const QJsonObject& json);
+    void createGroup(const QByteArray& data);
 private:
     FileHandler* fileHandler;
 

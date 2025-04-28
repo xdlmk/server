@@ -19,14 +19,14 @@ ChatNetworkManager::ChatNetworkManager(QObject *parent) : QTcpServer(parent), lo
         QObject::connect(this,&ChatNetworkManager::setAvatarInDatabase,DatabaseConnector::instance().getUserManager().get(),&UserManager::setUserAvatar);
         QObject::connect(this,&ChatNetworkManager::setGroupAvatarInDatabase,DatabaseConnector::instance().getGroupManager().get(),&GroupManager::setGroupAvatar);
 
-        QObject::connect(this,&ChatNetworkManager::personalMessageProcess,[](QJsonObject &json, ChatNetworkManager *manager) {
-            MessageProcessor::personalMessageProcess(json, manager);
+        QObject::connect(this,&ChatNetworkManager::personalMessageProcess,[](const QByteArray &data, ChatNetworkManager *manager) {
+            MessageProcessor::personalMessageProcess(data, manager);
         });
-        QObject::connect(this,&ChatNetworkManager::sendNewGroupAvatarUrlToActiveSockets,[](const QJsonObject &json, ChatNetworkManager *manager) {
-            MessageProcessor::sendNewGroupAvatarUrlToActiveSockets(json, manager);
+        QObject::connect(this,&ChatNetworkManager::groupMessageProcess,[](const QByteArray &data, ChatNetworkManager *manager) {
+            MessageProcessor::groupMessageProcess(data, manager);
         });
-        QObject::connect(this, &ChatNetworkManager::createGroup,[this](const QJsonObject& json){
-            DatabaseConnector::instance().getGroupManager()->createGroup(json,this);
+        QObject::connect(this, &ChatNetworkManager::createGroup,[this](const QByteArray& data){
+            DatabaseConnector::instance().getGroupManager()->createGroup(data, this);
         });
     }
 }

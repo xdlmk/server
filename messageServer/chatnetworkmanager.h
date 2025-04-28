@@ -20,9 +20,9 @@ signals:
     void saveFileToDatabase(const QString &fileUrl);
     void setAvatarInDatabase(const QString &avatarUrl, const int &user_id);
     void setGroupAvatarInDatabase(const QString &avatarUrl, const int &group_id);
-    void personalMessageProcess(QJsonObject &json,ChatNetworkManager *manager);
-    void createGroup(const QJsonObject& createGroupJson);
-    void sendNewGroupAvatarUrlToActiveSockets(const QJsonObject& json, ChatNetworkManager *manager);
+    void personalMessageProcess(const QByteArray &data, ChatNetworkManager *manager);
+    void groupMessageProcess(const QByteArray &data, ChatNetworkManager *manager);
+    void createGroup(const QByteArray& data);
 private:
     QList<ClientHandler*> clients;
     void removeClient(ClientHandler *client);

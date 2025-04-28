@@ -1,0 +1,23 @@
+syntax = "proto3";
+package avatars;
+
+message AvatarRequest {
+    string type = 1;
+    string avatar_url = 2;
+    uint64 user_id = 3;
+}
+
+message AvatarData {
+    string type = 1;
+    uint64 user_id = 2;
+    string avatar_url = 3;
+    bytes avatar_data = 4;
+}
+
+message AvatarFileData {
+  string type = 1;
+  uint64 id = 2;
+  string file_name = 3;
+  string file_extension = 4;
+  bytes file_data = 5;
+}

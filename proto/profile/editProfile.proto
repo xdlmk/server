@@ -1,0 +1,15 @@
+syntax = "proto3";
+package profile;
+
+message EditProfileRequest {
+    uint64 user_id = 1;
+    string editable = 2;
+    string edit_information = 3;
+}
+
+message EditProfileResponse {
+    string status = 1;
+    string editable = 2;
+    string edit_information = 3;
+    string error = 4;
+}

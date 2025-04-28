@@ -4,9 +4,6 @@
 #include <QObject>
 #include <QTcpSocket>
 
-#include <QJsonDocument>
-#include <QJsonObject>
-
 #include <QTimer>
 #include <QThread>
 #include <QMutex>
@@ -21,6 +18,14 @@
 
 #include "../Utils/logger.h"
 
+#include "generated_protobuf/envelope.qpb.h"
+#include "generated_protobuf/chatsInfo.qpb.h"
+#include "generated_protobuf/deleteMember.qpb.h"
+#include "generated_protobuf/addMembers.qpb.h"
+#include "generated_protobuf/updatingChats.qpb.h"
+#include "generated_protobuf/identifiers.qpb.h"
+#include <QtProtobuf/qprotobufserializer.h>
+
 class ClientHandler : public QObject {
     Q_OBJECT
 public:
@@ -30,7 +35,7 @@ public:
     bool setIdentifiers(const int& id);
     int getId();
 
-    void sendJson(const QJsonObject &jsonToSend);
+    void sendData(const QString &flag, const QByteArray &data);
 signals:
     void clientDisconnected(ClientHandler *client);
 private slots:
@@ -38,7 +43,8 @@ private slots:
     void handleBytesWritten(qint64 bytes);
     void disconnectClient();
 private:
-    void handleFlag(const QString &flag, QJsonObject &json, QTcpSocket *socket);
+    void handleFlag(const QString &flag, const QByteArray &data);
+
     void processSendQueue();
 
     int id;

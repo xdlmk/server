@@ -1,0 +1,26 @@
+syntax = "proto3";
+package groups;
+
+message GroupMemberContact {
+    uint64 user_id = 1;
+}
+
+message AddGroupMembersRequest {
+    uint64 group_id = 1;
+    uint64 admin_id = 2;
+    repeated GroupMemberContact members = 3;
+}
+
+message AddedMember {
+    uint64 user_id = 1;
+    string username = 2;
+    string status = 3;
+    string avatar_url = 4;
+}
+
+message AddGroupMembersResponse {
+    uint64 group_id = 1;
+    uint64 sender_id = 2;
+    string time = 3;
+    repeated AddedMember added_members = 4;
+}

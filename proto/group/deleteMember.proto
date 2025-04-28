@@ -1,0 +1,16 @@
+syntax = "proto3";
+package groups;
+
+message DeleteMemberRequest {
+    uint64 user_id = 1;
+    uint64 group_id = 2;
+    uint64 creator_id = 3;
+}
+
+message DeleteMemberResponse {
+    uint64 group_id = 1;
+    uint64 sender_id = 2;
+    uint64 deleted_user_id = 3;
+    uint32 error_code = 4;
+    string time = 5;
+}

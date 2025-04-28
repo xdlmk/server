@@ -1,0 +1,11 @@
+syntax = "proto3";
+package files;
+
+message FileRequest {
+    string fileUrl = 1;
+}
+
+message FileData {
+    string fileName = 1;
+    bytes fileData = 2;
+}

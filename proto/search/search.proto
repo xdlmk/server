@@ -1,0 +1,16 @@
+syntax = "proto3";
+package search;
+
+message SearchRequest {
+    string searchable = 1;
+}
+
+message SearchResultItem {
+    uint64 id = 1;
+    string userlogin = 2;
+    string avatar_url = 3;
+}
+
+message SearchResponse {
+    repeated SearchResultItem results = 1;
+}

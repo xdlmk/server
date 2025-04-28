@@ -1,2 +1,15 @@
-build/*
-CMakeLists.txt.user
+/build
+*.pb.cc
+*.pb.h
+
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+*.user
+*.pro.user*
+*.autosave
+
+*.exe
+*.out

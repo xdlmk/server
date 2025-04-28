@@ -2,18 +2,22 @@
 #define USERMANAGER_H
 
 #include <QObject>
+#include <QTcpSocket>
 
-#include <QJsonObject>
-#include <QJsonArray>
 #include <QString>
-
 #include <QCryptographicHash>
 
 #include <QSqlQuery>
 #include <QSqlError>
-#include <QTcpSocket>
 
 #include "../../Utils/logger.h"
+
+#include "generated_protobuf/login.qpb.h"
+#include "generated_protobuf/register.qpb.h"
+#include "generated_protobuf/search.qpb.h"
+#include "generated_protobuf/editProfile.qpb.h"
+#include "generated_protobuf/avatarsUpdate.qpb.h"
+#include <QtProtobuf/qprotobufserializer.h>
 
 class DatabaseConnector;
 class ChatNetworkManager;
@@ -24,13 +28,12 @@ class UserManager : public QObject
 public:
     explicit UserManager(DatabaseConnector *dbConnector, QObject *parent = nullptr);
 
-    QJsonObject loginUser(QJsonObject json, ChatNetworkManager *manager, QTcpSocket *socket);
-    QJsonObject registerUser(const QJsonObject &json);
-    QJsonObject searchUsers(const QJsonObject &json);
-    QJsonObject editUserProfile(const QJsonObject &dataEditProfile);
-    QJsonObject getCurrentAvatarUrlById(const QJsonObject &avatarsUpdate);
+    QByteArray loginUser(const QByteArray &data);
+    QByteArray registerUser(const QByteArray &data);
+    QByteArray searchUsers(const QByteArray &data);
+    QByteArray editUserProfile(const QByteArray &data);
+    QByteArray getCurrentAvatarUrlById(const QByteArray &data);
 
-    int getUserId(const QString &userlogin);
     bool userIdCheck(const int user_id);
     QString getUserLogin(int user_id);
     QList<int> getUserInterlocutorsIds(int user_id);
