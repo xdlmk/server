@@ -40,7 +40,7 @@ QByteArray FileHandler::makeAvatarUrlProcessing(const QByteArray &data)
     QProtobufSerializer serializer;
     avatars::AvatarFileData inMsg;
     if (!inMsg.deserialize(&serializer, data)) {
-        logger.log(Logger::WARN, "filehandler.cpp::makeAvatarUrlProcessing", "Failed to deserialize AvatarFileData");
+        logger.log(Logger::INFO, "filehandler.cpp::makeAvatarUrlProcessing", "Failed to deserialize AvatarFileData");
         return QByteArray();
     }
 
@@ -77,7 +77,7 @@ QString FileHandler::makeUrlProcessing(const QString &fileName, const QString &f
     }
     QFile file("uploads/" + uniqueFileName);
     if (!file.open(QIODevice::WriteOnly)) {
-        logger.log(Logger::WARN,"filehandler.cpp::makeUrlProcessing", "Failed to save file: " + uniqueFileName + " with error: " + file.errorString());
+        logger.log(Logger::INFO,"filehandler.cpp::makeUrlProcessing", "Failed to save file: " + uniqueFileName + " with error: " + file.errorString());
         return "";
     }
     file.write(data);

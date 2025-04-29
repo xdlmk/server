@@ -46,7 +46,7 @@ void FileClientHandler::readClient()
         QProtobufSerializer serializer;
         messages::Envelope envelope;
         if (!envelope.deserialize(&serializer, envelopeData)) {
-            logger.log(Logger::WARN, "clienthandler.cpp::readClient", "Failed to deserialize protobuf");
+            logger.log(Logger::DEBUG, "clienthandler.cpp::readClient", "Failed to deserialize protobuf");
             blockSize = 0;
             return;
         }

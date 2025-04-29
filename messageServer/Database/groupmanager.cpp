@@ -50,7 +50,7 @@ void GroupManager::createGroup(const QByteArray &data, ChatNetworkManager *manag
     creationMessage.setContent("created this group");
     creationMessage.setGroupId(groupId);
     creationMessage.setSenderId(creatorId);
-    creationMessage.setSpecialType("create");
+    creationMessage.setSpecialType("create_group");
 
     MessageProcessor::groupMessageProcess(creationMessage.serialize(&serializer), manager);
 }
@@ -209,7 +209,7 @@ void GroupManager::setGroupAvatar(const QString &avatarUrl, int group_id)
     params[":avatar_url"] = avatarUrl;
     QSqlQuery query;
     if (!databaseConnector->executeQuery(query,"UPDATE group_chats SET avatar_url = :avatar_url WHERE group_id = :group_id;",params)) {
-        logger.log(Logger::WARN,"groupmanager.cpp::setGroupAvatar", "Error execute sql query: " + query.lastError().text());
+        logger.log(Logger::INFO,"groupmanager.cpp::setGroupAvatar", "Error execute sql query: " + query.lastError().text());
     }
 }
 
@@ -221,7 +221,7 @@ QString GroupManager::getGroupAvatar(int group_id)
     QSqlQuery query;
     if (databaseConnector->executeQuery(query,"SELECT avatar_url FROM group_chats WHERE group_id = :group_id",params) && query.next()) {
         return query.value(0).toString();
-    } else logger.log(Logger::WARN,"groupmanager.cpp::getGroupAvatar", "Error execute sql query: " + query.lastError().text());
+    } else logger.log(Logger::INFO,"groupmanager.cpp::getGroupAvatar", "Error execute sql query: " + query.lastError().text());
     return "";
 }
 
@@ -239,7 +239,7 @@ QList<int> GroupManager::getUserGroups(int user_id)
                 groupIds.append(groupId);
             }
         }
-    } else logger.log(Logger::WARN,"groupmanager.cpp::getUserGroups", "Error getting groups for user_id: " + QString::number(user_id) + " with error: " + query.lastError().text());
+    } else logger.log(Logger::INFO,"groupmanager.cpp::getUserGroups", "Error getting groups for user_id: " + QString::number(user_id) + " with error: " + query.lastError().text());
     return groupIds;
 }
 

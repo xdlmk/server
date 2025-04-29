@@ -13,6 +13,6 @@ void FileManager::saveFileRecord(const QString &fileUrl)
     QSqlQuery query;
 
     if (!databaseConnector->executeQuery(query, "INSERT INTO `files` (`file_url`) VALUES (:fileUrl);", params)) {
-        logger.log(Logger::WARN,"filemanager.cpp::saveFileRecord", "Query exec error: " + query.lastError().text());
+        logger.log(Logger::INFO,"filemanager.cpp::saveFileRecord", "Query exec error: " + query.lastError().text());
     }
 }

@@ -242,7 +242,7 @@ QString UserManager::getUserLogin(int user_id)
     if (databaseConnector->executeQuery(query,"SELECT userlogin FROM users WHERE id_user = :user_id",params) && query.next()) {
         return query.value(0).toString();
     }
-    logger.log(Logger::WARN,"usermanager.cpp::getUserLogin", "UserLogin not found: " + QString::number(user_id));
+    logger.log(Logger::INFO,"usermanager.cpp::getUserLogin", "UserLogin not found: " + QString::number(user_id));
     return "";
 }
 
@@ -268,7 +268,7 @@ QList<int> UserManager::getUserInterlocutorsIds(int user_id)
             }
         }
     } else {
-        logger.log(Logger::WARN, "usermanager.cpp::getUserInterlocutorsIds",
+        logger.log(Logger::INFO, "usermanager.cpp::getUserInterlocutorsIds",
                    "Error getting interlocutors for user_id: " + QString::number(user_id) +
                        " with error: " + query.lastError().text());
     }

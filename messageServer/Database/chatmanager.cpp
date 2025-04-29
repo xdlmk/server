@@ -87,7 +87,7 @@ chats::UpdatingChatsResponse ChatManager::updatingChatsProcess(const quint64 &us
     return response;
 }
 
-int ChatManager::saveMessage(int dialogId, int senderId, int receiverId, const QString &message, const QString &fileUrl, const QString &flag)
+quint64 ChatManager::saveMessage(int dialogId, int senderId, int receiverId, const QString &message, const QString &fileUrl, const QString &special_type, const QString &flag)
 {
     QSqlQuery query;
     QString queryStr;
@@ -95,17 +95,18 @@ int ChatManager::saveMessage(int dialogId, int senderId, int receiverId, const Q
     if(flag == "personal") {
         params[":receiver_id"] = receiverId;
         params[":dialog_id"] = dialogId;
-        queryStr = "INSERT INTO messages (sender_id, receiver_id, dialog_id, content, media_url) VALUES (:sender_id, :receiver_id, :dialog_id, :content, :fileUrl)";
+        queryStr = "INSERT INTO messages (sender_id, receiver_id, dialog_id, content, media_url, special_type) VALUES (:sender_id, :receiver_id, :dialog_id, :content, :fileUrl, :special_type)";
     } else if (flag == "group") {
         params[":group_id"] = receiverId;
-        queryStr = "INSERT INTO messages (sender_id, group_id, content, media_url) VALUES (:sender_id, :group_id, :content, :fileUrl)";
+        queryStr = "INSERT INTO messages (sender_id, group_id, content, media_url, special_type) VALUES (:sender_id, :group_id, :content, :fileUrl, :special_type)";
     }
     params[":sender_id"] = senderId;
     params[":content"] = message;
     params[":fileUrl"] = fileUrl;
+    params[":special_type"] = special_type;
     if (!databaseConnector->executeQuery(query,queryStr,params)) {
-        logger.log(Logger::WARN,"chatmanager.cpp::saveMessage", "Error exec query: " + query.lastError().text());
-        return -1;
+        logger.log(Logger::INFO,"chatmanager.cpp::saveMessage", "Error exec query: " + query.lastError().text());
+        return 0;
     }
     return query.lastInsertId().toInt();
 }
@@ -116,13 +117,13 @@ QByteArray ChatManager::loadMessages(const QByteArray &requestData)
     chats::LoadMessagesRequest request;
 
     if (!request.deserialize(&serializer, requestData)) {
-        logger.log(Logger::WARN, "chatmanager.cpp::loadMessages", "Error deserialize request");
+        logger.log(Logger::INFO, "chatmanager.cpp::loadMessages", "Error deserialize request");
         return QByteArray();
     }
 
-    uint64_t chat_id = request.chatId();
-    uint64_t user_id = request.userId();
-    uint32_t offset = request.offset();
+    quint64 chat_id = request.chatId();
+    quint64 user_id = request.userId();
+    quint32 offset = request.offset();
     QString chat_name;
     QString queryStr;
     QMap<QString, QVariant> params;
@@ -132,11 +133,11 @@ QByteArray ChatManager::loadMessages(const QByteArray &requestData)
         chat_name = databaseConnector->getUserManager()->getUserLogin(chat_id);
         int dialog_id = getOrCreateDialog(user_id, chat_id);
         params[":dialog_id"] = dialog_id;
-        queryStr = "SELECT message_id, content, media_url, timestamp, sender_id, receiver_id FROM messages WHERE dialog_id = :dialog_id ORDER BY timestamp DESC LIMIT 50 OFFSET :offset";
+        queryStr = "SELECT message_id, content, media_url, timestamp, sender_id, receiver_id, special_type FROM messages WHERE dialog_id = :dialog_id ORDER BY timestamp DESC LIMIT 50 OFFSET :offset";
     } else if(request.type() == chats::ChatTypeGadget::ChatType::GROUP) {
         chat_name = databaseConnector->getGroupManager()->getGroupName(chat_id);
         params[":group_id"] = chat_id;
-        queryStr = "SELECT message_id, content, media_url, timestamp, sender_id FROM messages WHERE group_id = :group_id ORDER BY timestamp DESC LIMIT 50 OFFSET :offset";
+        queryStr = "SELECT message_id, content, media_url, timestamp, sender_id, special_type FROM messages WHERE group_id = :group_id ORDER BY timestamp DESC LIMIT 50 OFFSET :offset";
     }
 
     QSqlQuery query;
@@ -144,7 +145,7 @@ QByteArray ChatManager::loadMessages(const QByteArray &requestData)
     QList<chats::ChatMessage> messages;
 
     if (!databaseConnector->executeQuery(query,queryStr,params)){
-        logger.log(Logger::WARN,"chatmanager.cpp::loadMessagesProcess", "Error exec query: " + query.lastError().text());
+        logger.log(Logger::INFO,"chatmanager.cpp::loadMessagesProcess", "Error exec query: " + query.lastError().text());
         return QByteArray();
     }
 
@@ -180,8 +181,8 @@ QList<chats::ChatMessage> ChatManager::getUserMessages(const quint64 user_id, bo
         QMap<QString, QVariant> params;
         params[":dialog_id"] = dialog_id;
 
-        if (!databaseConnector->executeQuery(query, "SELECT message_id, content, media_url, timestamp, sender_id, receiver_id FROM messages WHERE dialog_id = :dialog_id ORDER BY timestamp DESC LIMIT 50", params)) {
-            logger.log(Logger::WARN,"chatmanager.cpp::getUserMessages", "Error exec query: " + query.lastError().text());
+        if (!databaseConnector->executeQuery(query, "SELECT message_id, content, media_url, timestamp, sender_id, receiver_id, special_type FROM messages WHERE dialog_id = :dialog_id ORDER BY timestamp DESC LIMIT 50", params)) {
+            logger.log(Logger::INFO,"chatmanager.cpp::getUserMessages", "Error exec query: " + query.lastError().text());
             continue;
         }
         while (query.next()) {
@@ -194,8 +195,8 @@ QList<chats::ChatMessage> ChatManager::getUserMessages(const quint64 user_id, bo
         QMap<QString, QVariant> params;
         params[":group_id"] = group_id;
 
-        if (!databaseConnector->executeQuery(query, "SELECT message_id, content, media_url, timestamp, sender_id FROM messages WHERE group_id = :group_id ORDER BY timestamp DESC LIMIT 50", params)) {
-            logger.log(Logger::WARN,"chatmanager.cpp::getUserMessages", "Error exec query: " + query.lastError().text());
+        if (!databaseConnector->executeQuery(query, "SELECT message_id, content, media_url, timestamp, sender_id, special_type FROM messages WHERE group_id = :group_id ORDER BY timestamp DESC LIMIT 50", params)) {
+            logger.log(Logger::INFO,"chatmanager.cpp::getUserMessages", "Error exec query: " + query.lastError().text());
             continue;
         }
 
@@ -223,7 +224,7 @@ QList<int> ChatManager::getUserDialogs(int user_id)
             }
         }
     } else {
-        logger.log(Logger::WARN,"chatmanager.cpp::getUserDialogs", "Error getting dialogs for user_id: " + QString::number(user_id) + " with error: " + query.lastError().text());
+        logger.log(Logger::INFO,"chatmanager.cpp::getUserDialogs", "Error getting dialogs for user_id: " + QString::number(user_id) + " with error: " + query.lastError().text());
     }
     return dialogIds;
 }
@@ -236,6 +237,7 @@ chats::ChatMessage ChatManager::generatePersonalMessageObject(QSqlQuery &query)
     QString timestamp = query.value(3).toString();
     int senderId = query.value(4).toInt();
     int receiverId = query.value(5).toInt();
+    QString special_type = query.value(6).toString();
 
     if (message_id + senderId + receiverId == 0) return chats::ChatMessage();
 
@@ -248,6 +250,7 @@ chats::ChatMessage ChatManager::generatePersonalMessageObject(QSqlQuery &query)
     message.setSenderLogin(databaseConnector->getUserManager()->getUserLogin(senderId));
     message.setReceiverLogin(databaseConnector->getUserManager()->getUserLogin(receiverId));
     message.setContent(content);
+    message.setSpecialType(special_type);
 
     return message;
 }
@@ -259,6 +262,7 @@ chats::ChatMessage ChatManager::generateGroupMessageObject(QSqlQuery &query)
     QString fileUrl = query.value(2).toString();
     QString timestamp = query.value(3).toString();
     int senderId = query.value(4).toInt();
+    QString special_type = query.value(5).toString();
 
     chats::ChatMessage message;
     message.setMessageId(message_id);
@@ -267,6 +271,7 @@ chats::ChatMessage ChatManager::generateGroupMessageObject(QSqlQuery &query)
     message.setSenderId(senderId);
     message.setSenderLogin(databaseConnector->getUserManager()->getUserLogin(senderId));
     message.setContent(content);
+    message.setSpecialType(special_type);
 
     return message;
 }

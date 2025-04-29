@@ -17,7 +17,7 @@ void MessageProcessor::personalMessageProcess(const QByteArray &data, ChatNetwor
     chats::ChatMessage message;
     QProtobufSerializer serializer;
     if (!message.deserialize(&serializer, data)) {
-        Logger::instance().log(Logger::ERROR, "messageprocessor.cpp::personalMessageProcess", "Failed to deserialize personal message");
+        Logger::instance().log(Logger::INFO, "messageprocessor.cpp::personalMessageProcess", "Failed to deserialize personal message");
         return;
     }
 
@@ -27,9 +27,10 @@ void MessageProcessor::personalMessageProcess(const QByteArray &data, ChatNetwor
     quint64 dialog_id = DatabaseConnector::instance().getChatManager()->getOrCreateDialog(sender_id, receiver_id);
     QString content = message.content();
     QString fileUrl =  message.mediaUrl();
+    QString special_type = message.specialType();
 
-    quint64 message_id = DatabaseConnector::instance().getChatManager()->saveMessage(dialog_id, sender_id,receiver_id, content, fileUrl, "personal");
-    if(message_id == -1 || message_id == 0) {
+    quint64 message_id = DatabaseConnector::instance().getChatManager()->saveMessage(dialog_id, sender_id,receiver_id, content, fileUrl, special_type, "personal");
+    if(message_id == 0) {
         // add processing
         return;
     }
@@ -71,7 +72,7 @@ void MessageProcessor::groupMessageProcess(const QByteArray &data, ChatNetworkMa
     QProtobufSerializer serializer;
     chats::ChatMessage message;
     if (!message.deserialize(&serializer, data)) {
-        Logger::instance().log(Logger::ERROR, "messageprocessor.cpp::groupMessageProcess", "Failed to deserialize group message");
+        Logger::instance().log(Logger::INFO, "messageprocessor.cpp::groupMessageProcess", "Failed to deserialize group message");
         return;
     }
 
@@ -79,6 +80,7 @@ void MessageProcessor::groupMessageProcess(const QByteArray &data, ChatNetworkMa
     quint64 sender_id = message.senderId();
     QString content = message.content();
     QString fileUrl = message.mediaUrl();
+    QString special_type = message.specialType();
 
     message.setSenderLogin(DatabaseConnector::instance().getUserManager()->getUserLogin(sender_id));
     message.setSenderAvatarUrl(DatabaseConnector::instance().getUserManager()->getUserAvatar(sender_id));
@@ -87,9 +89,9 @@ void MessageProcessor::groupMessageProcess(const QByteArray &data, ChatNetworkMa
     message.setTimestamp(QDateTime::currentDateTime().toString(Qt::ISODate));
 
     quint64 message_id = DatabaseConnector::instance().getChatManager()->saveMessage(
-        0, sender_id, group_id, content, fileUrl, "group");
+        0, sender_id, group_id, content, fileUrl, special_type, "group");
 
-    if(message_id == -1 || message_id == 0) {
+    if(message_id == 0) {
         // add processing
         return;
     }

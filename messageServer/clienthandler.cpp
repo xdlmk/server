@@ -59,7 +59,7 @@ void ClientHandler::readClient()
         QProtobufSerializer serializer;
         messages::Envelope envelope;
         if (!envelope.deserialize(&serializer, envelopeData)) {
-            logger.log(Logger::WARN, "clienthandler.cpp::readClient", "Failed to deserialize protobuf");
+            logger.log(Logger::INFO, "clienthandler.cpp::readClient", "Failed to deserialize protobuf");
             blockSize = 0;
             return;
         }
@@ -227,7 +227,7 @@ void ClientHandler::handleFlag(const QString &flag, const QByteArray &data)
         break;
     }
     default:
-        logger.log(Logger::WARN,"clienthandler.cpp::handleFlag", "Unknown flag: " + flag);
+        logger.log(Logger::INFO,"clienthandler.cpp::handleFlag", "Unknown flag: " + flag);
         break;
     }
 }

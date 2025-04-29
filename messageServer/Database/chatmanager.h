@@ -28,7 +28,7 @@ public:
 
     chats::UpdatingChatsResponse updatingChatsProcess(const quint64 &user_id);
 
-    int saveMessage(int dialogId, int senderId, int receiverId, const QString &message, const QString &fileUrl, const QString &flag);
+    quint64 saveMessage(int dialogId, int senderId, int receiverId, const QString &message, const QString &fileUrl, const QString &special_type, const QString &flag);
     QByteArray loadMessages(const QByteArray &requestData);
 
 private:

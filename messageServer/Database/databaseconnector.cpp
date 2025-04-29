@@ -23,10 +23,10 @@ DatabaseConnector::DatabaseConnector(QObject *parent)
 
 bool DatabaseConnector::connectToDatabase()
 {
-    db = QSqlDatabase::addDatabase("QMARIADB");
+    db = QSqlDatabase::addDatabase("QMYSQL");
     db.setHostName("localhost");
     db.setPort(3306);
-    db.setDatabaseName("test_db");
+    db.setDatabaseName("test_db2");
     db.setUserName("admin");
     db.setPassword("admin-password");
 
@@ -47,7 +47,7 @@ bool DatabaseConnector::executeQuery(QSqlQuery &query, const QString &queryStr, 
     }
 
     if (!query.exec()) {
-        logger.log(Logger::WARN,"databaseconnector.cpp::executeQuery", "Query exec error: " + query.lastError().text() + " for query: " + queryStr);
+        logger.log(Logger::INFO,"databaseconnector.cpp::executeQuery", "Query exec error: " + query.lastError().text() + " for query: " + queryStr);
         return false;
     }
 
