@@ -70,6 +70,11 @@ QByteArray UserManager::registerUser(const QByteArray &data)
     QString login = request.login();
     QString password = hashPassword(request.password());
 
+    QByteArray publicKey = request.publicKey();
+    QByteArray encryptedPrivateKey = request.encryptedPrivateKey();
+    QByteArray salt = request.salt();
+    QByteArray nonce = request.nonce();
+
     auth::RegisterResponse response;
     QMap<QString, QVariant> params;
     params[":userlogin"] = login;
@@ -91,7 +96,14 @@ QByteArray UserManager::registerUser(const QByteArray &data)
             QMap<QString, QVariant> insertParams;
             insertParams[":username"] = login;
             insertParams[":password_hash"] = password;
-            if (!databaseConnector->executeQuery(query, "INSERT INTO `users` (`username`, `password_hash`, `userlogin`) VALUES (:username, :password_hash, :username);", insertParams)) {
+            insertParams[":avatar_url"] = "basic";
+            insertParams[":public_key"] = publicKey;
+            insertParams[":encrypted_private_key"] = encryptedPrivateKey;
+            insertParams[":salt"] = salt;
+            insertParams[":nonce"] = nonce;
+
+            if (!databaseConnector->executeQuery(query, "INSERT INTO `users` (`username`, `password_hash`, `avatar_url`, `userlogin`, `public_key`, `encrypted_private_key`, `salt`, `nonce`)"
+                                                        " VALUES (:username, :password_hash, :avatar_url, :username, :public_key, :encrypted_private_key, :salt, :nonce);", insertParams)) {
                 logger.log(Logger::DEBUG, "usermanager.cpp::registerUser", "Error executing INSERT query: " + query.lastError().text());
                 response.setSuccess("error");
                 response.setErrorMes("Error inserting into database");
