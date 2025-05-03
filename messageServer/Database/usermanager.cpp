@@ -39,10 +39,13 @@ QByteArray UserManager::loginUser(const QByteArray &data)
             response.setUserlogin(login);
             response.setPassword(password);
 
-            if (databaseConnector->executeQuery(query, "SELECT avatar_url, id_user FROM users WHERE userlogin = :userlogin", params)) {
+            if (databaseConnector->executeQuery(query, "SELECT avatar_url, id_user, encrypted_private_key, salt, nonce FROM users WHERE userlogin = :userlogin", params)) {
                 if (query.next()) {
                     response.setAvatarUrl(query.value(0).toString());
                     response.setUserId(query.value(1).toULongLong());
+                    response.setEncryptedPrivateKey((query.value(2).toByteArray()));
+                    response.setSalt((query.value(3).toByteArray()));
+                    response.setNonce((query.value(4).toByteArray()));
                 } else {
                     response.setSuccess("poor");
                 }
@@ -231,6 +234,24 @@ QByteArray UserManager::getCurrentAvatarUrlById(const QByteArray &data)
     response.setGroupsAvatars(groupAvatars);
 
     return response.serialize(&serializer);
+}
+
+QByteArray UserManager::getUserPublicKey(const quint64 &user_id)
+{
+    QMap<QString, QVariant> params;
+    params[":user_id"] = user_id;
+    QSqlQuery query;
+
+    if (!databaseConnector->executeQuery(query, "SELECT public_key FROM users WHERE id_user = :user_id", params)) {
+        logger.log(Logger::DEBUG, "usermanager.cpp::getUserPublicKey", "Error execute query: " + query.lastError().text());
+        return QByteArray();
+    }
+
+    if (query.next()) {
+        return query.value(0).toByteArray();
+    }
+
+    return QByteArray();
 }
 
 bool UserManager::userIdCheck(const int user_id)

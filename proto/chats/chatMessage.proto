@@ -28,4 +28,7 @@ message ChatMessage {
     string special_type = 14;
 
     FileData file = 15;
+
+    bytes sender_encrypted_session_key = 16;
+    bytes receiver_encrypted_session_key = 17;
 }

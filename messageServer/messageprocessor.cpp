@@ -12,27 +12,29 @@ MessageProcessor::MessageProcessor(QObject *parent)
     : QObject{parent}
 {}
 
-void MessageProcessor::personalMessageProcess(const QByteArray &data, ChatNetworkManager *manager)
+QString MessageProcessor::personalMessageProcess(const QByteArray &data, ChatNetworkManager *manager)
 {
     chats::ChatMessage message;
     QProtobufSerializer serializer;
     if (!message.deserialize(&serializer, data)) {
         Logger::instance().log(Logger::INFO, "messageprocessor.cpp::personalMessageProcess", "Failed to deserialize personal message");
-        return;
+        return QString("fd");
     }
 
     quint64 receiver_id = message.receiverId();
     quint64 sender_id = message.senderId();
 
     quint64 dialog_id = DatabaseConnector::instance().getChatManager()->getOrCreateDialog(sender_id, receiver_id);
+    if(dialog_id == 0){
+        return QString("nd");
+    }
     QString content = message.content();
     QString fileUrl =  message.mediaUrl();
     QString special_type = message.specialType();
 
     quint64 message_id = DatabaseConnector::instance().getChatManager()->saveMessage(dialog_id, sender_id,receiver_id, content, fileUrl, special_type, "personal");
     if(message_id == 0) {
-        // add processing
-        return;
+        return QString("nm");
     }
 
     message.setSenderLogin(DatabaseConnector::instance().getUserManager()->getUserLogin(sender_id));
@@ -43,6 +45,8 @@ void MessageProcessor::personalMessageProcess(const QByteArray &data, ChatNetwor
 
     message.setMessageId(message_id);
     sendMessageToActiveSockets(message.serialize(&serializer), "personal_message", sender_id, receiver_id, manager);
+
+    return QString("t");
 }
 
 void MessageProcessor::sendMessageToActiveSockets(const QByteArray &data, const QString &flag, const quint64 &sender_id, const quint64 &receiver_id, ChatNetworkManager *manager)

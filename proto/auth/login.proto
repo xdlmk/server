@@ -12,4 +12,8 @@ message LoginResponse {
     string password = 3;
     string avatar_url = 4;
     uint64 user_id = 5;
+
+    bytes encrypted_private_key = 6;
+    bytes salt = 7;
+    bytes nonce = 8;
 }

@@ -34,6 +34,8 @@ public:
     QByteArray editUserProfile(const QByteArray &data);
     QByteArray getCurrentAvatarUrlById(const QByteArray &data);
 
+    QByteArray getUserPublicKey(const quint64 &user_id);
+
     bool userIdCheck(const int user_id);
     QString getUserLogin(int user_id);
     QList<int> getUserInterlocutorsIds(int user_id);

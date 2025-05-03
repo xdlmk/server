@@ -158,9 +158,17 @@ void ClientHandler::handleFlag(const QString &flag, const QByteArray &data)
     case 4:
         sendData("search",db.getUserManager()->searchUsers(data));
         break;
-    case 5:
-        MessageProcessor::personalMessageProcess(data, manager);
+    case 5: {
+        QString r = MessageProcessor::personalMessageProcess(data, manager);
+        if(r != QString("t")) {
+            chats::ErrorSendMessage errorSendMessage;
+            errorSendMessage.setErrorType(r);
+            errorSendMessage.setChatMessage(data);
+            QProtobufSerializer serializer;
+            sendData("personal_message_error", errorSendMessage.serialize(&serializer));
+        }
         break;
+    }
     case 6:
         MessageProcessor::groupMessageProcess(data, manager);
         break;
@@ -226,6 +234,9 @@ void ClientHandler::handleFlag(const QString &flag, const QByteArray &data)
         setIdentifiers(ident.userId());
         break;
     }
+    case 16:
+        sendData("create_dialog", db.getChatManager()->getDataForCreateDialog(data));
+        break;
     default:
         logger.log(Logger::INFO,"clienthandler.cpp::handleFlag", "Unknown flag: " + flag);
         break;
@@ -267,5 +278,5 @@ const std::unordered_map<std::string_view, uint> ClientHandler::flagMap = {
     {"delete_member", 9}, {"add_group_members", 10},
     {"load_messages", 11}, {"edit", 12},
     {"avatars_update", 13}, {"create_group", 14},
-    {"identifiers", 15}
+    {"identifiers", 15}, {"create_dialog", 16}
 };

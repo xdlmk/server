@@ -13,6 +13,7 @@
 #include "generated_protobuf/updatingChats.qpb.h"
 #include "generated_protobuf/loadMessages.qpb.h"
 #include "generated_protobuf/chatMessage.qpb.h"
+#include "generated_protobuf/createDialog.qpb.h"
 #include <QtProtobuf/qprotobufserializer.h>
 
 class DatabaseConnector;
@@ -24,7 +25,8 @@ public:
     explicit ChatManager(DatabaseConnector *dbConnector, QObject *parent = nullptr);
 
     QList<chats::DialogInfoItem> getDialogInfo(const int &user_id);
-    int getOrCreateDialog(int sender_id, int receiver_id);
+    quint64 getOrCreateDialog(int sender_id, int receiver_id);
+    QByteArray getDataForCreateDialog(const QByteArray &requestData);
 
     chats::UpdatingChatsResponse updatingChatsProcess(const quint64 &user_id);
 
