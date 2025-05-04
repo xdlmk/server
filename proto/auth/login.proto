@@ -16,4 +16,6 @@ message LoginResponse {
     bytes encrypted_private_key = 6;
     bytes salt = 7;
     bytes nonce = 8;
+
+    bytes public_key = 9;
 }

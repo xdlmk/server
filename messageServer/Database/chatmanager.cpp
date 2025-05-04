@@ -61,7 +61,7 @@ QList<chats::DialogInfoItem> ChatManager::getDialogInfo(const int &user_id)
     return dialogsInfoList;
 }
 
-quint64 ChatManager::getOrCreateDialog(int sender_id, int receiver_id)
+quint64 ChatManager::getOrCreateDialog(int sender_id, int receiver_id, const QByteArray &sender_encrypted_session_key, const QByteArray &receiver_encrypted_session_key)
 {
     QSqlQuery query;
     QMap<QString, QVariant> params;
@@ -69,14 +69,53 @@ quint64 ChatManager::getOrCreateDialog(int sender_id, int receiver_id)
     params[":user2"] = receiver_id;
     databaseConnector->executeQuery(query, "SELECT dialog_id FROM dialogs WHERE (user1_id = :user1 AND user2_id = :user2) OR (user1_id = :user2 AND user2_id = :user1)",params);
     if (query.next()) {
-        return query.value(0).toInt();
+        return query.value(0).toULongLong();
     } else {
         QMap<QString, QVariant> insertParams;
         insertParams[":user1"] = sender_id;
         insertParams[":user2"] = receiver_id;
-        databaseConnector->executeQuery(query,"INSERT INTO dialogs (user1_id, user2_id) VALUES (:user1, :user2)",insertParams);
-        return query.lastInsertId().toInt();
+        insertParams[":sender_encrypted_session_key"] = sender_encrypted_session_key;
+        insertParams[":receiver_encrypted_session_key"] = receiver_encrypted_session_key;
+        databaseConnector->executeQuery(query,"INSERT INTO dialogs (user1_id, user2_id, encrypted_session_key_user1, encrypted_session_key_user2) VALUES (:user1, :user2, :sender_encrypted_session_key, :receiver_encrypted_session_key)",insertParams);
+        return query.lastInsertId().toULongLong();
     }
+}
+
+quint64 ChatManager::getDialog(const quint64 &sender_id, const quint64 &receiver_id)
+{
+    QSqlQuery query;
+    QMap<QString, QVariant> params;
+    params[":user1"] = sender_id;
+    params[":user2"] = receiver_id;
+    databaseConnector->executeQuery(query, "SELECT dialog_id FROM dialogs WHERE (user1_id = :user1 AND user2_id = :user2) OR (user1_id = :user2 AND user2_id = :user1)",params);
+    if (query.next()) {
+        return query.value(0).toULongLong();
+    } else {
+        return 0;
+    }
+}
+
+QByteArray ChatManager::getEncryptedSessionKey(const quint64 &dialog_id, const quint64 &user_id)
+{
+    QSqlQuery query;
+    QMap<QString, QVariant> params;
+    params[":dialog_id"] = dialog_id;
+    params[":user_id"] = user_id;
+
+    QString sqlQuery =
+        "SELECT CASE "
+        "WHEN user1_id = :user_id THEN encrypted_session_key_user1 "
+        "WHEN user2_id = :user_id THEN encrypted_session_key_user2 "
+        "END AS encrypted_session_key "
+        "FROM dialogs WHERE dialog_id = :dialog_id";
+
+    databaseConnector->executeQuery(query, sqlQuery, params);
+
+    if (query.next()) {
+        return query.value(0).toByteArray();
+    } else return QByteArray();
+
+    return QByteArray();
 }
 
 QByteArray ChatManager::getDataForCreateDialog(const QByteArray &requestData)
@@ -155,7 +194,11 @@ QByteArray ChatManager::loadMessages(const QByteArray &requestData)
 
     if (request.type() == chats::ChatTypeGadget::ChatType::PERSONAL) {
         chat_name = databaseConnector->getUserManager()->getUserLogin(chat_id);
-        int dialog_id = getOrCreateDialog(user_id, chat_id);
+        int dialog_id = getDialog(user_id, chat_id);
+        if(dialog_id == 0) {
+            return QByteArray();
+        }
+
         params[":dialog_id"] = dialog_id;
         queryStr = "SELECT message_id, content, media_url, timestamp, sender_id, receiver_id, special_type FROM messages WHERE dialog_id = :dialog_id ORDER BY timestamp DESC LIMIT 50 OFFSET :offset";
     } else if(request.type() == chats::ChatTypeGadget::ChatType::GROUP) {

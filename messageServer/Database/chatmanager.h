@@ -25,7 +25,12 @@ public:
     explicit ChatManager(DatabaseConnector *dbConnector, QObject *parent = nullptr);
 
     QList<chats::DialogInfoItem> getDialogInfo(const int &user_id);
-    quint64 getOrCreateDialog(int sender_id, int receiver_id);
+
+    quint64 getOrCreateDialog(int sender_id, int receiver_id, const QByteArray &sender_encrypted_session_key, const QByteArray &receiver_encrypted_session_key);
+    quint64 getDialog(const quint64 &sender_id, const quint64 &receiver_id);
+
+    QByteArray getEncryptedSessionKey(const quint64& dialog_id, const quint64& user_id);
+
     QByteArray getDataForCreateDialog(const QByteArray &requestData);
 
     chats::UpdatingChatsResponse updatingChatsProcess(const quint64 &user_id);

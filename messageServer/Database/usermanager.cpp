@@ -39,13 +39,14 @@ QByteArray UserManager::loginUser(const QByteArray &data)
             response.setUserlogin(login);
             response.setPassword(password);
 
-            if (databaseConnector->executeQuery(query, "SELECT avatar_url, id_user, encrypted_private_key, salt, nonce FROM users WHERE userlogin = :userlogin", params)) {
+            if (databaseConnector->executeQuery(query, "SELECT avatar_url, id_user, encrypted_private_key, salt, nonce, public_key FROM users WHERE userlogin = :userlogin", params)) {
                 if (query.next()) {
                     response.setAvatarUrl(query.value(0).toString());
                     response.setUserId(query.value(1).toULongLong());
                     response.setEncryptedPrivateKey((query.value(2).toByteArray()));
                     response.setSalt((query.value(3).toByteArray()));
                     response.setNonce((query.value(4).toByteArray()));
+                    response.setPublicKey((query.value(5).toByteArray()));
                 } else {
                     response.setSuccess("poor");
                 }

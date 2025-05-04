@@ -161,6 +161,7 @@ void ClientHandler::handleFlag(const QString &flag, const QByteArray &data)
     case 5: {
         QString r = MessageProcessor::personalMessageProcess(data, manager);
         if(r != QString("t")) {
+            logger.log(Logger::DEBUG,"clienthandler.cpp::handleFlag", "Error personal message process: " + r);
             chats::ErrorSendMessage errorSendMessage;
             errorSendMessage.setErrorType(r);
             errorSendMessage.setChatMessage(data);
