@@ -253,7 +253,10 @@ QList<chats::ChatMessage> ChatManager::getUserMessages(const quint64 user_id, bo
             continue;
         }
         while (query.next()) {
-            messages.prepend(generatePersonalMessageObject(query));
+            chats::ChatMessage message = generatePersonalMessageObject(query);
+            message.setSenderEncryptedSessionKey(getEncryptedSessionKey(dialog_id,message.senderId()));
+            message.setReceiverEncryptedSessionKey(getEncryptedSessionKey(dialog_id,message.receiverId()));
+            messages.prepend(message);
         }
     }
     QList<int> groupIds = databaseConnector->getGroupManager()->getUserGroups(user_id);
