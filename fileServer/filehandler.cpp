@@ -111,6 +111,7 @@ QByteArray FileHandler::getFileFromUrlProcessing(const QByteArray &data, const Q
     files::FileData response;
     response.setFileName(fileUrl);
     response.setFileData(fileData);
+    response.setUserId(request.userId());
 
     return response.serialize(&serializer);
 }

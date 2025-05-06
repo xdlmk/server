@@ -3,9 +3,13 @@ package files;
 
 message FileRequest {
     string fileUrl = 1;
+    uint64 user_id = 2;
+
 }
 
 message FileData {
     string fileName = 1;
     bytes fileData = 2;
+    uint64 user_id = 3;
 }
+
