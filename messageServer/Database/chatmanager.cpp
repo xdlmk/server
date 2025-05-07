@@ -192,9 +192,10 @@ QByteArray ChatManager::loadMessages(const QByteArray &requestData)
     QMap<QString, QVariant> params;
     params[":offset"] = offset;
 
+    int dialog_id;
     if (request.type() == chats::ChatTypeGadget::ChatType::PERSONAL) {
         chat_name = databaseConnector->getUserManager()->getUserLogin(chat_id);
-        int dialog_id = getDialog(user_id, chat_id);
+        dialog_id = getDialog(user_id, chat_id);
         if(dialog_id == 0) {
             return QByteArray();
         }
@@ -218,7 +219,10 @@ QByteArray ChatManager::loadMessages(const QByteArray &requestData)
 
     while (query.next()) {
         if (request.type() == chats::ChatTypeGadget::ChatType::PERSONAL) {
-            messages.prepend(generatePersonalMessageObject(query));
+            chats::ChatMessage message = generatePersonalMessageObject(query);
+            message.setSenderEncryptedSessionKey(getEncryptedSessionKey(dialog_id,message.senderId()));
+            message.setReceiverEncryptedSessionKey(getEncryptedSessionKey(dialog_id,message.receiverId()));
+            messages.prepend(message);
         } else if (request.type() == chats::ChatTypeGadget::ChatType::GROUP) {
             chats::ChatMessage message = generateGroupMessageObject(query);
             message.setGroupId(chat_id);

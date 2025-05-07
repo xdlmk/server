@@ -25,11 +25,9 @@ QString MessageProcessor::personalMessageProcess(const QByteArray &data, ChatNet
     quint64 sender_id = message.senderId();
     quint64 dialog_id = DatabaseConnector::instance().getChatManager()->getDialog(sender_id, receiver_id);
     if(dialog_id == 0){
-        qDebug() << "dialog_id == 0";
         QByteArray sender_encrypted_session_key = message.senderEncryptedSessionKey();
         QByteArray receiver_encrypted_session_key = message.receiverEncryptedSessionKey();
         if(sender_encrypted_session_key != QByteArray() && receiver_encrypted_session_key != QByteArray()){
-            qDebug() << "session key not null";
             dialog_id = DatabaseConnector::instance().getChatManager()->getOrCreateDialog(sender_id, receiver_id, sender_encrypted_session_key, receiver_encrypted_session_key);
         } else return QString("nd");
     } else {
@@ -40,9 +38,6 @@ QString MessageProcessor::personalMessageProcess(const QByteArray &data, ChatNet
     QString content = message.content();
     QString fileUrl =  message.mediaUrl();
     QString special_type = message.specialType();
-
-    qDebug() << content;
-    qDebug() << dialog_id;
 
     quint64 message_id = DatabaseConnector::instance().getChatManager()->saveMessage(dialog_id, sender_id,receiver_id, content, fileUrl, special_type, "personal");
     if(message_id == 0) {
