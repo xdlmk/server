@@ -12,6 +12,7 @@ message DialogInfoItem {
     string phone_number = 4;
     string avatar_url = 5;
     string created_at = 6;
+    bytes encrypted_session_key = 7;
 }
 
 message GroupMember {

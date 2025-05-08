@@ -31,6 +31,8 @@ qt_add_protobuf(protosource
         ${CMAKE_SOURCE_DIR}/proto/chats/chatsInfo.proto
         ${CMAKE_SOURCE_DIR}/proto/chats/updatingChats.proto
         ${CMAKE_SOURCE_DIR}/proto/chats/chatMessage.proto
+        ${CMAKE_SOURCE_DIR}/proto/chats/createDialog.proto
+        ${CMAKE_SOURCE_DIR}/proto/chats/errorSendMessage.proto
         ${CMAKE_SOURCE_DIR}/proto/chats/loadMessages.proto
 
         ${CMAKE_SOURCE_DIR}/proto/group/createGroup.proto

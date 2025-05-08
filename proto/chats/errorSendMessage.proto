@@ -1,0 +1,7 @@
+syntax = "proto3";
+package chats;
+
+message ErrorSendMessage {
+    string error_type = 1;
+    bytes chatMessage = 2;
+}

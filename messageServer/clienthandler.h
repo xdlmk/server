@@ -20,6 +20,7 @@
 
 #include "generated_protobuf/envelope.qpb.h"
 #include "generated_protobuf/chatsInfo.qpb.h"
+#include "generated_protobuf/errorSendMessage.qpb.h"
 #include "generated_protobuf/deleteMember.qpb.h"
 #include "generated_protobuf/addMembers.qpb.h"
 #include "generated_protobuf/updatingChats.qpb.h"
