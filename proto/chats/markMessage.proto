@@ -1,0 +1,12 @@
+syntax = "proto3";
+package chats;
+
+message markMessageRequest {
+  uint64 message_id = 1;
+  uint64 reader_id = 2;
+}
+
+message markMessageResponse {
+  uint64 message_id = 1;
+  uint64 reader_id = 2;
+}
