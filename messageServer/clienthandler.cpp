@@ -242,10 +242,17 @@ void ClientHandler::handleFlag(const QString &flag, const QByteArray &data)
         chats::MarkMessageRequest request;
         QProtobufSerializer serializer;
         request.deserialize(&serializer, data);
-        QPair<quint64, quint64> ids = db.getChatManager()->getSenderReceiverByMessageId(request.messageId());
-        if(ids == qMakePair(0ULL,0ULL)) break;
-        MessageProcessor::sendMessageToActiveSockets(db.getChatManager()->markMessage(request.messageId(), request.readerId()), "mark_message", ids.first, ids.second, manager);
-        break;
+        if(db.getChatManager()->markMessage(request.messageId(), request.readerId())) {
+            chats::MarkMessageResponse response;
+            response.setMessageId(request.messageId());
+            response.setReaderId(request.readerId());
+            QPair<quint64, quint64> ids = db.getChatManager()->getSenderReceiverByMessageId(request.messageId());
+            if(ids == qMakePair(0ULL,0ULL)) break;
+            response.setChatId(request.readerId() == ids.first ? ids.second : ids.first);
+            MessageProcessor::sendMessageToActiveSockets(response.serialize(&serializer), "mark_message", ids.first, ids.second, manager);
+            break;
+        }
+
     }
     default:
         logger.log(Logger::INFO,"clienthandler.cpp::handleFlag", "Unknown flag: " + flag);

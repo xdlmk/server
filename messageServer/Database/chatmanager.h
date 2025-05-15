@@ -29,7 +29,7 @@ public:
 
     QList<chats::DialogInfoItem> getDialogInfo(const int &user_id);
 
-    QByteArray markMessage(const quint64 &message_id, const quint64 &reader_id);
+    bool markMessage(const quint64 &message_id, const quint64 &reader_id);
 
     QPair<quint64, quint64> getSenderReceiverByMessageId(const quint64& messageId);
     quint64 getOrCreateDialog(int sender_id, int receiver_id, const QByteArray &sender_encrypted_session_key, const QByteArray &receiver_encrypted_session_key);

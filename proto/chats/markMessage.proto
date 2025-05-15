@@ -9,4 +9,5 @@ message markMessageRequest {
 message markMessageResponse {
   uint64 message_id = 1;
   uint64 reader_id = 2;
+  uint64 chat_id = 3;
 }

@@ -61,24 +61,16 @@ QList<chats::DialogInfoItem> ChatManager::getDialogInfo(const int &user_id)
     return dialogsInfoList;
 }
 
-QByteArray ChatManager::markMessage(const QByteArray &markMessageRequest)
+bool ChatManager::markMessage(const quint64 &message_id, const quint64 &reader_id)
 {
-    chats::MarkMessageRequest request;
-    QProtobufSerializer serializer;
-    request.deserialize(&serializer,markMessageRequest);
-    quint64 message_id = request.messageId();
-    quint64 reader_id = request.readerId();
     QSqlQuery query;
     QMap<QString, QVariant> params;
     params[":message_id"] = message_id;
     params[":user_id"] = reader_id;
-    databaseConnector->executeQuery(query,
-                                    "INSERT INTO message_reads (message_id, user_id) VALUES (:message_id, :user_id)",
-                                    params);
-    chats::MarkMessageResponse response;
-    response.setMessageId(message_id);
-    response.setReaderId(reader_id);
-    return response.serialize(&serializer);
+    if(!databaseConnector->executeQuery(query,
+                                         "INSERT INTO message_reads (message_id, user_id) VALUES (:message_id, :user_id)",
+                                         params)) return false;
+    return true;
 }
 
 QPair<quint64, quint64> ChatManager::getSenderReceiverByMessageId(const quint64 &messageId)
