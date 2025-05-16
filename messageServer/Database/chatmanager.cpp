@@ -257,6 +257,7 @@ QByteArray ChatManager::loadMessages(const QByteArray &requestData)
         } else if (request.type() == chats::ChatTypeGadget::ChatType::GROUP) {
             chats::ChatMessage message = generateGroupMessageObject(query);
             message.setGroupId(chat_id);
+            message.setIsRead(getGroupMessageReadStatus(message.messageId(), user_id, message.senderId()));
             message.setGroupName(databaseConnector->getGroupManager()->getGroupName(chat_id));
             messages.prepend(message);
         }
@@ -308,6 +309,7 @@ QList<chats::ChatMessage> ChatManager::getUserMessages(const quint64 user_id, bo
         while (query.next()) {
             chats::ChatMessage message = generateGroupMessageObject(query);
             message.setGroupId(group_id);
+            message.setIsRead(getGroupMessageReadStatus(message.messageId(), user_id, message.senderId()));
             message.setGroupName(databaseConnector->getGroupManager()->getGroupName(group_id));
             messages.prepend(message);
         }
@@ -334,6 +336,45 @@ QList<int> ChatManager::getUserDialogs(int user_id)
     return dialogIds;
 }
 
+bool ChatManager::getMessageReadStatus(const quint64 &message_id)
+{
+    QMap<QString, QVariant> params;
+    params[":message_id"] = message_id;
+
+    QSqlQuery query;
+    if (!databaseConnector->executeQuery(query,
+                                         "SELECT COUNT(*) FROM message_reads WHERE message_id = :message_id",
+                                         params)) {
+        return false;
+    }
+    if (query.next()) {
+        return (query.value(0).toInt() > 0);
+    }
+    return false;
+}
+
+bool ChatManager::getGroupMessageReadStatus(const quint64 &message_id, const quint64 &user_id, const quint64 &sender_id)
+{
+    QMap<QString, QVariant> params;
+    params[":message_id"] = message_id;
+    QSqlQuery query;
+
+    if(user_id == sender_id) {
+        return getMessageReadStatus(message_id);
+    } else {
+        params[":user_id"] = user_id;
+        if (!databaseConnector->executeQuery(query,
+                                             "SELECT COUNT(*) FROM message_reads WHERE message_id = :message_id AND user_id = :user_id",
+                                             params)) {
+            return false;
+        }
+        if(query.next()) {
+            return (query.value(0).toInt() > 0);
+        }
+        return false;
+    }
+}
+
 chats::ChatMessage ChatManager::generatePersonalMessageObject(QSqlQuery &query)
 {
     int message_id = query.value(0).toInt();
@@ -348,6 +389,7 @@ chats::ChatMessage ChatManager::generatePersonalMessageObject(QSqlQuery &query)
 
     chats::ChatMessage message;
     message.setMessageId(message_id);
+    message.setIsRead(getMessageReadStatus(message_id));
     message.setMediaUrl(fileUrl);
     message.setTimestamp(timestamp);
     message.setReceiverId(receiverId);

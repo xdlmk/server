@@ -47,6 +47,10 @@ public:
 private:
     QList<chats::ChatMessage> getUserMessages(const quint64 user_id, bool &failed);
     QList<int> getUserDialogs(int user_id);
+
+    bool getMessageReadStatus(const quint64 &message_id);
+    bool getGroupMessageReadStatus(const quint64 &message_id, const quint64 &user_id, const quint64 &sender_id);
+
     chats::ChatMessage generatePersonalMessageObject(QSqlQuery &query);
     chats::ChatMessage generateGroupMessageObject(QSqlQuery &query);
 
