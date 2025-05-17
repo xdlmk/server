@@ -24,13 +24,8 @@ QString MessageProcessor::personalMessageProcess(const QByteArray &data, ChatNet
     quint64 receiver_id = message.receiverId();
     quint64 sender_id = message.senderId();
     quint64 dialog_id = DatabaseConnector::instance().getChatManager()->getDialog(sender_id, receiver_id);
-    if(dialog_id == 0){
-        QByteArray sender_encrypted_session_key = message.senderEncryptedSessionKey();
-        QByteArray receiver_encrypted_session_key = message.receiverEncryptedSessionKey();
-        if(sender_encrypted_session_key != QByteArray() && receiver_encrypted_session_key != QByteArray()){
-            dialog_id = DatabaseConnector::instance().getChatManager()->getOrCreateDialog(sender_id, receiver_id, sender_encrypted_session_key, receiver_encrypted_session_key);
-        } else return QString("nd");
-    } else {
+    if(dialog_id == 0) return QString("nd");
+    else {
         message.setSenderEncryptedSessionKey(DatabaseConnector::instance().getChatManager()->getEncryptedSessionKey(dialog_id, sender_id));
         message.setReceiverEncryptedSessionKey(DatabaseConnector::instance().getChatManager()->getEncryptedSessionKey(dialog_id, receiver_id));
     }
@@ -61,6 +56,14 @@ void MessageProcessor::sendMessageToActiveSockets(const QByteArray &data, const 
     QList<ClientHandler*> clients = manager->getClients();
     for(ClientHandler *client : clients) {
         if(client->getId() == sender_id || client->getId() == receiver_id) client->sendData(flag,data);
+    }
+}
+
+void MessageProcessor::sendDataToActiveSocket(const QByteArray &data, const QString &flag, const quint64 &user_id, ChatNetworkManager *manager)
+{
+    QList<ClientHandler*> clients = manager->getClients();
+    for(ClientHandler *client : clients) {
+        if(client->getId() == user_id ) client->sendData(flag,data);
     }
 }
 

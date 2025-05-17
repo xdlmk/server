@@ -92,15 +92,24 @@ QPair<quint64, quint64> ChatManager::getSenderReceiverByMessageId(const quint64 
     return qMakePair(senderId, receiverId);
 }
 
-quint64 ChatManager::getOrCreateDialog(int sender_id, int receiver_id, const QByteArray &sender_encrypted_session_key, const QByteArray &receiver_encrypted_session_key)
+QByteArray ChatManager::createDialog(const QByteArray &dialogData)
 {
+    QProtobufSerializer serializer;
+    chats::CreateDialogWithKeysRequest request;
+    request.deserialize(&serializer, dialogData);
+
+    quint64 sender_id = request.senderId();
+    quint64 receiver_id = request.receiverId();
+    QByteArray sender_encrypted_session_key = request.senderEncryptedSessionKey();
+    QByteArray receiver_encrypted_session_key = request.receiverEncryptedSessionKey();
     QSqlQuery query;
     QMap<QString, QVariant> params;
     params[":user1"] = sender_id;
     params[":user2"] = receiver_id;
+
     databaseConnector->executeQuery(query, "SELECT dialog_id FROM dialogs WHERE (user1_id = :user1 AND user2_id = :user2) OR (user1_id = :user2 AND user2_id = :user1)",params);
     if (query.next()) {
-        return query.value(0).toULongLong();
+        return QByteArray();
     } else {
         QMap<QString, QVariant> insertParams;
         insertParams[":user1"] = sender_id;
@@ -108,7 +117,16 @@ quint64 ChatManager::getOrCreateDialog(int sender_id, int receiver_id, const QBy
         insertParams[":sender_encrypted_session_key"] = sender_encrypted_session_key;
         insertParams[":receiver_encrypted_session_key"] = receiver_encrypted_session_key;
         databaseConnector->executeQuery(query,"INSERT INTO dialogs (user1_id, user2_id, encrypted_session_key_user1, encrypted_session_key_user2) VALUES (:user1, :user2, :sender_encrypted_session_key, :receiver_encrypted_session_key)",insertParams);
-        return query.lastInsertId().toULongLong();
+
+        quint64 dialog_id = query.lastInsertId().toULongLong();
+
+        chats::CreateDialogWithKeysResponse response;
+        response.setUniqMessageId(request.uniqMessageId());
+        response.setReceiverId(request.receiverId());
+        response.setReceiverEncryptedSessionKey(getEncryptedSessionKey(dialog_id, receiver_id));
+        response.setSenderEncryptedSessionKey(getEncryptedSessionKey(dialog_id, sender_id));
+
+        return response.serialize(&serializer);
     }
 }
 

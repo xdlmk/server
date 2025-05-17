@@ -9,6 +9,7 @@
 #include <QDebug>
 
 #include "filemanager.h"
+#include "../chatnetworkmanager.h"
 
 #include "../../Utils/logger.h"
 

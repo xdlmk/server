@@ -250,10 +250,12 @@ void ClientHandler::handleFlag(const QString &flag, const QByteArray &data)
             if(ids == qMakePair(0ULL,0ULL)) break;
             response.setChatId(request.readerId() == ids.first ? ids.second : ids.first);
             MessageProcessor::sendMessageToActiveSockets(response.serialize(&serializer), "mark_message", ids.first, ids.second, manager);
-            break;
         }
-
+        break;
     }
+    case 18:
+        sendData("create_dialog_with_keys", db.getChatManager()->createDialog(data));
+        break;
     default:
         logger.log(Logger::INFO,"clienthandler.cpp::handleFlag", "Unknown flag: " + flag);
         break;
@@ -295,5 +297,6 @@ const std::unordered_map<std::string_view, uint> ClientHandler::flagMap = {
     {"delete_member", 9}, {"add_group_members", 10},
     {"load_messages", 11}, {"edit", 12},
     {"avatars_update", 13}, {"create_group", 14},
-    {"identifiers", 15}, {"create_dialog", 16}, {"mark_message", 17}
+    {"identifiers", 15}, {"create_dialog", 16},
+    {"mark_message", 17}, {"create_dialog_with_keys", 18}
 };

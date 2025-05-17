@@ -15,3 +15,21 @@ message CreateDialogResponse {
     bytes sender_public_key = 3;
     bytes receiver_public_key = 4;
 }
+
+message CreateDialogWithKeysRequest {
+    string uniq_message_id = 1;
+    
+    uint64 sender_id = 2;
+    uint64 receiver_id = 3;
+
+    bytes sender_encrypted_session_key = 4;
+    bytes receiver_encrypted_session_key = 5;
+}
+
+message CreateDialogWithKeysResponse {
+    string uniq_message_id = 1;
+    uint64 receiver_id = 2;
+
+    bytes sender_encrypted_session_key = 3;
+    bytes receiver_encrypted_session_key = 4;
+}
