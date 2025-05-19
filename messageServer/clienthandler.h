@@ -5,6 +5,7 @@
 #include <QTcpSocket>
 
 #include <QTimer>
+#include <QPair>
 #include <QThread>
 #include <QMutex>
 #include <QMutexLocker>

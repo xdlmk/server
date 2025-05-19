@@ -1,0 +1,16 @@
+syntax = "proto3";
+package chats;
+
+import "loadMessages.proto";
+
+message markMessageRequest {
+  uint64 message_id = 1;
+  uint64 reader_id = 2;
+}
+
+message markMessageResponse {
+  uint64 message_id = 1;
+  uint64 reader_id = 2;
+  uint64 chat_id = 3;
+  ChatType type = 4;
+}

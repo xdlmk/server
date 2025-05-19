@@ -24,7 +24,8 @@ public:
 
     void createGroup(const QByteArray &data, ChatNetworkManager *manager);
     QList<chats::GroupInfoItem> getGroupInfo(const int &user_id);
-    QList<int> getGroupMembers(int group_id);
+    QList<quint64> getGroupMembers(const quint64& group_id);
+    quint64 getGroupIdByMessageId(const quint64 &messageId);
     QByteArray addMemberToGroup(const groups::AddGroupMembersRequest &addMemberData);
     QByteArray removeMemberFromGroup(const groups::DeleteMemberRequest &request, bool &failed);
 

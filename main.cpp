@@ -1,6 +1,7 @@
 #include <QCoreApplication>
 #include "fileServer/fileserver.h"
 #include "messageServer/chatnetworkmanager.h"
+#include "messageServer/Database/databaseconnector.h"
 
 int main(int argc, char *argv[])
 {

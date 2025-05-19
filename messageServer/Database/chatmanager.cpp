@@ -61,15 +61,55 @@ QList<chats::DialogInfoItem> ChatManager::getDialogInfo(const int &user_id)
     return dialogsInfoList;
 }
 
-quint64 ChatManager::getOrCreateDialog(int sender_id, int receiver_id, const QByteArray &sender_encrypted_session_key, const QByteArray &receiver_encrypted_session_key)
+bool ChatManager::markMessage(const quint64 &message_id, const quint64 &reader_id)
 {
+    QSqlQuery query;
+    QMap<QString, QVariant> params;
+    params[":message_id"] = message_id;
+    params[":user_id"] = reader_id;
+    if(!databaseConnector->executeQuery(query,
+                                         "INSERT INTO message_reads (message_id, user_id) VALUES (:message_id, :user_id)",
+                                         params)) return false;
+    return true;
+}
+
+QPair<quint64, quint64> ChatManager::getSenderReceiverByMessageId(const quint64 &messageId)
+{
+    quint64 senderId = 0;
+    quint64 receiverId = 0;
+
+    QMap<QString, QVariant> params;
+    params[":message_id"] = messageId;
+    QSqlQuery query;
+    if (!databaseConnector->executeQuery(query,
+                                         "SELECT sender_id, receiver_id FROM messages WHERE message_id = :message_id",
+                                         params)) return qMakePair(0ULL, 0ULL);
+    if(query.next()) {
+        senderId = query.value(0).toULongLong();
+        receiverId = query.value(1).toULongLong();
+    } else return qMakePair(0ULL, 0ULL);
+
+    return qMakePair(senderId, receiverId);
+}
+
+QByteArray ChatManager::createDialog(const QByteArray &dialogData)
+{
+    QProtobufSerializer serializer;
+    chats::CreateDialogWithKeysRequest request;
+    request.deserialize(&serializer, dialogData);
+
+    quint64 sender_id = request.senderId();
+    quint64 receiver_id = request.receiverId();
+    QByteArray sender_encrypted_session_key = request.senderEncryptedSessionKey();
+    QByteArray receiver_encrypted_session_key = request.receiverEncryptedSessionKey();
     QSqlQuery query;
     QMap<QString, QVariant> params;
     params[":user1"] = sender_id;
     params[":user2"] = receiver_id;
+
     databaseConnector->executeQuery(query, "SELECT dialog_id FROM dialogs WHERE (user1_id = :user1 AND user2_id = :user2) OR (user1_id = :user2 AND user2_id = :user1)",params);
     if (query.next()) {
-        return query.value(0).toULongLong();
+        return QByteArray();
     } else {
         QMap<QString, QVariant> insertParams;
         insertParams[":user1"] = sender_id;
@@ -77,7 +117,16 @@ quint64 ChatManager::getOrCreateDialog(int sender_id, int receiver_id, const QBy
         insertParams[":sender_encrypted_session_key"] = sender_encrypted_session_key;
         insertParams[":receiver_encrypted_session_key"] = receiver_encrypted_session_key;
         databaseConnector->executeQuery(query,"INSERT INTO dialogs (user1_id, user2_id, encrypted_session_key_user1, encrypted_session_key_user2) VALUES (:user1, :user2, :sender_encrypted_session_key, :receiver_encrypted_session_key)",insertParams);
-        return query.lastInsertId().toULongLong();
+
+        quint64 dialog_id = query.lastInsertId().toULongLong();
+
+        chats::CreateDialogWithKeysResponse response;
+        response.setUniqMessageId(request.uniqMessageId());
+        response.setReceiverId(request.receiverId());
+        response.setReceiverEncryptedSessionKey(getEncryptedSessionKey(dialog_id, receiver_id));
+        response.setSenderEncryptedSessionKey(getEncryptedSessionKey(dialog_id, sender_id));
+
+        return response.serialize(&serializer);
     }
 }
 
@@ -226,6 +275,7 @@ QByteArray ChatManager::loadMessages(const QByteArray &requestData)
         } else if (request.type() == chats::ChatTypeGadget::ChatType::GROUP) {
             chats::ChatMessage message = generateGroupMessageObject(query);
             message.setGroupId(chat_id);
+            message.setIsRead(getGroupMessageReadStatus(message.messageId(), user_id, message.senderId()));
             message.setGroupName(databaseConnector->getGroupManager()->getGroupName(chat_id));
             messages.prepend(message);
         }
@@ -277,6 +327,7 @@ QList<chats::ChatMessage> ChatManager::getUserMessages(const quint64 user_id, bo
         while (query.next()) {
             chats::ChatMessage message = generateGroupMessageObject(query);
             message.setGroupId(group_id);
+            message.setIsRead(getGroupMessageReadStatus(message.messageId(), user_id, message.senderId()));
             message.setGroupName(databaseConnector->getGroupManager()->getGroupName(group_id));
             messages.prepend(message);
         }
@@ -303,6 +354,45 @@ QList<int> ChatManager::getUserDialogs(int user_id)
     return dialogIds;
 }
 
+bool ChatManager::getMessageReadStatus(const quint64 &message_id)
+{
+    QMap<QString, QVariant> params;
+    params[":message_id"] = message_id;
+
+    QSqlQuery query;
+    if (!databaseConnector->executeQuery(query,
+                                         "SELECT COUNT(*) FROM message_reads WHERE message_id = :message_id",
+                                         params)) {
+        return false;
+    }
+    if (query.next()) {
+        return (query.value(0).toInt() > 0);
+    }
+    return false;
+}
+
+bool ChatManager::getGroupMessageReadStatus(const quint64 &message_id, const quint64 &user_id, const quint64 &sender_id)
+{
+    QMap<QString, QVariant> params;
+    params[":message_id"] = message_id;
+    QSqlQuery query;
+
+    if(user_id == sender_id) {
+        return getMessageReadStatus(message_id);
+    } else {
+        params[":user_id"] = user_id;
+        if (!databaseConnector->executeQuery(query,
+                                             "SELECT COUNT(*) FROM message_reads WHERE message_id = :message_id AND user_id = :user_id",
+                                             params)) {
+            return false;
+        }
+        if(query.next()) {
+            return (query.value(0).toInt() > 0);
+        }
+        return false;
+    }
+}
+
 chats::ChatMessage ChatManager::generatePersonalMessageObject(QSqlQuery &query)
 {
     int message_id = query.value(0).toInt();
@@ -317,6 +407,7 @@ chats::ChatMessage ChatManager::generatePersonalMessageObject(QSqlQuery &query)
 
     chats::ChatMessage message;
     message.setMessageId(message_id);
+    message.setIsRead(getMessageReadStatus(message_id));
     message.setMediaUrl(fileUrl);
     message.setTimestamp(timestamp);
     message.setReceiverId(receiverId);

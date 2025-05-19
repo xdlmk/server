@@ -199,7 +199,7 @@ void ClientHandler::handleFlag(const QString &flag, const QByteArray &data)
         bool failed = true;
         QByteArray rmData = db.getGroupManager()->removeMemberFromGroup(request, failed);
         if(!failed){
-            QList<int> members = db.getGroupManager()->getGroupMembers(request.groupId());
+            QList<quint64> members = db.getGroupManager()->getGroupMembers(request.groupId());
             MessageProcessor::sendGroupMessageToActiveSockets(rmData, "delete_member", members, manager);
         } else {
             sendData("delete_member",rmData);
@@ -212,7 +212,7 @@ void ClientHandler::handleFlag(const QString &flag, const QByteArray &data)
         request.deserialize(&serializer, data);
 
         QByteArray amData = db.getGroupManager()->addMemberToGroup(request);
-        QList<int> members = db.getGroupManager()->getGroupMembers(request.groupId());
+        QList<quint64> members = db.getGroupManager()->getGroupMembers(request.groupId());
         MessageProcessor::sendGroupMessageToActiveSockets(amData, "add_group_members", members, manager);
         break;
     }
@@ -237,6 +237,34 @@ void ClientHandler::handleFlag(const QString &flag, const QByteArray &data)
     }
     case 16:
         sendData("create_dialog", db.getChatManager()->getDataForCreateDialog(data));
+        break;
+    case 17:{
+        chats::MarkMessageRequest request;
+        QProtobufSerializer serializer;
+        request.deserialize(&serializer, data);
+        if(db.getChatManager()->markMessage(request.messageId(), request.readerId())) {
+            chats::MarkMessageResponse response;
+            response.setMessageId(request.messageId());
+            response.setReaderId(request.readerId());
+            QPair<quint64, quint64> ids = db.getChatManager()->getSenderReceiverByMessageId(request.messageId());
+            if(ids.first != 0 && ids.second != 0) {
+                response.setChatId(request.readerId() == ids.first ? ids.second : ids.first);
+                response.setType(chats::ChatTypeGadget::ChatType::PERSONAL);
+                MessageProcessor::sendMessageToActiveSockets(response.serialize(&serializer), "mark_message", ids.first, ids.second, manager);
+                break;
+            } else {
+                quint64 groupId = db.getGroupManager()->getGroupIdByMessageId(request.messageId());
+                QList<quint64> idsMembers = db.getGroupManager()->getGroupMembers(groupId);
+                response.setChatId(groupId);
+                response.setType(chats::ChatTypeGadget::ChatType::GROUP);
+                MessageProcessor::sendGroupMessageToActiveSockets(response.serialize(&serializer), "mark_message", idsMembers, manager);
+                break;
+            }
+        }
+        break;
+    }
+    case 18:
+        sendData("create_dialog_with_keys", db.getChatManager()->createDialog(data));
         break;
     default:
         logger.log(Logger::INFO,"clienthandler.cpp::handleFlag", "Unknown flag: " + flag);
@@ -279,5 +307,6 @@ const std::unordered_map<std::string_view, uint> ClientHandler::flagMap = {
     {"delete_member", 9}, {"add_group_members", 10},
     {"load_messages", 11}, {"edit", 12},
     {"avatars_update", 13}, {"create_group", 14},
-    {"identifiers", 15}, {"create_dialog", 16}
+    {"identifiers", 15}, {"create_dialog", 16},
+    {"mark_message", 17}, {"create_dialog_with_keys", 18}
 };
