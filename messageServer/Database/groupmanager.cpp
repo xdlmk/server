@@ -97,9 +97,9 @@ QList<chats::GroupInfoItem> GroupManager::getGroupInfo(const int &user_id)
     return response;
 }
 
-QList<int> GroupManager::getGroupMembers(int group_id)
+QList<quint64> GroupManager::getGroupMembers(const quint64& group_id)
 {
-    QList<int> members;
+    QList<quint64> members;
     QSqlQuery queryMembers;
     QMap<QString, QVariant> params;
     params[":group_id"] = group_id;
@@ -111,6 +111,27 @@ QList<int> GroupManager::getGroupMembers(int group_id)
         logger.log(Logger::INFO,"groupmanager.cpp::getGroupMembers", "Query exec error: " + queryMembers.lastError().text());
     }
     return members;
+}
+
+quint64 GroupManager::getGroupIdByMessageId(const quint64 &messageId)
+{
+    quint64 groupId = 0;
+    QMap<QString, QVariant> params;
+    params[":message_id"] = messageId;
+    QSqlQuery query;
+
+    if (!databaseConnector->executeQuery(query,
+                                         "SELECT group_id FROM messages WHERE message_id = :message_id",
+                                         params))
+        return groupId;
+
+    if(query.next()) {
+        groupId = query.value(0).toULongLong();
+    } else {
+        return groupId;
+    }
+
+    return groupId;
 }
 
 QByteArray GroupManager::addMemberToGroup(const groups::AddGroupMembersRequest &addMemberData)

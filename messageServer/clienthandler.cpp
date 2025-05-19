@@ -199,7 +199,7 @@ void ClientHandler::handleFlag(const QString &flag, const QByteArray &data)
         bool failed = true;
         QByteArray rmData = db.getGroupManager()->removeMemberFromGroup(request, failed);
         if(!failed){
-            QList<int> members = db.getGroupManager()->getGroupMembers(request.groupId());
+            QList<quint64> members = db.getGroupManager()->getGroupMembers(request.groupId());
             MessageProcessor::sendGroupMessageToActiveSockets(rmData, "delete_member", members, manager);
         } else {
             sendData("delete_member",rmData);
@@ -212,7 +212,7 @@ void ClientHandler::handleFlag(const QString &flag, const QByteArray &data)
         request.deserialize(&serializer, data);
 
         QByteArray amData = db.getGroupManager()->addMemberToGroup(request);
-        QList<int> members = db.getGroupManager()->getGroupMembers(request.groupId());
+        QList<quint64> members = db.getGroupManager()->getGroupMembers(request.groupId());
         MessageProcessor::sendGroupMessageToActiveSockets(amData, "add_group_members", members, manager);
         break;
     }
@@ -247,9 +247,19 @@ void ClientHandler::handleFlag(const QString &flag, const QByteArray &data)
             response.setMessageId(request.messageId());
             response.setReaderId(request.readerId());
             QPair<quint64, quint64> ids = db.getChatManager()->getSenderReceiverByMessageId(request.messageId());
-            if(ids == qMakePair(0ULL,0ULL)) break;
-            response.setChatId(request.readerId() == ids.first ? ids.second : ids.first);
-            MessageProcessor::sendMessageToActiveSockets(response.serialize(&serializer), "mark_message", ids.first, ids.second, manager);
+            if(ids.first != 0 && ids.second != 0) {
+                response.setChatId(request.readerId() == ids.first ? ids.second : ids.first);
+                response.setType(chats::ChatTypeGadget::ChatType::PERSONAL);
+                MessageProcessor::sendMessageToActiveSockets(response.serialize(&serializer), "mark_message", ids.first, ids.second, manager);
+                break;
+            } else {
+                quint64 groupId = db.getGroupManager()->getGroupIdByMessageId(request.messageId());
+                QList<quint64> idsMembers = db.getGroupManager()->getGroupMembers(groupId);
+                response.setChatId(groupId);
+                response.setType(chats::ChatTypeGadget::ChatType::GROUP);
+                MessageProcessor::sendGroupMessageToActiveSockets(response.serialize(&serializer), "mark_message", idsMembers, manager);
+                break;
+            }
         }
         break;
     }

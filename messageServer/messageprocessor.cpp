@@ -67,7 +67,7 @@ void MessageProcessor::sendDataToActiveSocket(const QByteArray &data, const QStr
     }
 }
 
-void MessageProcessor::sendGroupMessageToActiveSockets(const QByteArray& data, const QString& flag, QList<int> groupMembersIds, ChatNetworkManager *manager)
+void MessageProcessor::sendGroupMessageToActiveSockets(const QByteArray& data, const QString& flag, QList<quint64> groupMembersIds, ChatNetworkManager *manager)
 {
     Logger::instance().log(Logger::INFO,"messageprocessor.cpp::sendGroupMessageToActiveSockets", "Method starts");
 
@@ -111,6 +111,6 @@ void MessageProcessor::groupMessageProcess(const QByteArray &data, ChatNetworkMa
     }
 
     message.setMessageId(message_id);
-    QList<int> groupMembersIds = DatabaseConnector::instance().getGroupManager()->getGroupMembers(group_id);
+    QList<quint64> groupMembersIds = DatabaseConnector::instance().getGroupManager()->getGroupMembers(group_id);
     sendGroupMessageToActiveSockets(message.serialize(&serializer), "group_message", groupMembersIds, manager);
 }
