@@ -333,6 +333,36 @@ QString UserManager::getUserAvatar(int user_id)
     return "";
 }
 
+void UserManager::deleteUser(quint64 user_id)
+{
+    QMap<QString, QVariant> params;
+    params[":id_user"] = QVariant::fromValue(user_id);
+    QSqlQuery query;
+
+    if (!databaseConnector->executeQuery(query,
+                                         "SELECT COUNT(*) FROM users WHERE id_user = :id_user;",
+                                         params)) {
+
+        logger.log(Logger::DEBUG, "usermanager.cpp::deleteUser",
+                   "Query failed: " + query.lastError().text());
+        throw std::runtime_error("Query failed: " + query.lastError().text().toStdString());
+    }
+
+    if (query.next()) {
+        int count = query.value(0).toInt();
+        if(count <= 0) throw std::runtime_error("User not found");
+    } else throw std::runtime_error("User not found");
+
+    if (!databaseConnector->executeQuery(query,
+                                         "DELETE FROM users WHERE id_user = :id_user;",
+                                         params)) {
+
+        logger.log(Logger::DEBUG, "usermanager.cpp::deleteUser",
+                   "Delete failed: " + query.lastError().text());
+        throw std::runtime_error("Failed to delete user from database");
+    }
+}
+
 QString UserManager::hashPassword(const QString &password)
 {
     QByteArray hash = QCryptographicHash::hash(password.toUtf8(), QCryptographicHash::Sha256);

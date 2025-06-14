@@ -64,8 +64,12 @@ add_executable(Server
     fileServer/filehandler.h fileServer/filehandler.cpp
     fileServer/fileclienthandler.h fileServer/fileclienthandler.cpp
 
+    cli/commandinterfaceserver.h cli/commandinterfaceserver.cpp
+
     Utils/logger.h Utils/logger.cpp
 )
+
+add_subdirectory(mserver_cli)
 
 add_dependencies(Server protosource)
 

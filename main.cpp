@@ -1,13 +1,16 @@
 #include <QCoreApplication>
+
 #include "fileServer/fileserver.h"
 #include "messageServer/chatnetworkmanager.h"
 #include "messageServer/Database/databaseconnector.h"
+#include "cli/commandinterfaceserver.h"
 
 int main(int argc, char *argv[])
 {
     QCoreApplication a(argc, argv);
     ChatNetworkManager messageServer;
     FileServer fileServer;
+    CommandInterfaceServer cliServer(&messageServer);
 
     QObject::connect(&fileServer, &FileServer::saveFileToDatabase, &messageServer, &ChatNetworkManager::saveFileToDatabase);
     QObject::connect(&fileServer, &FileServer::setAvatarInDatabase, &messageServer, &ChatNetworkManager::setAvatarInDatabase);

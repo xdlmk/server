@@ -1,4 +1,6 @@
 /build
+mserver_cli/build/
+
 *.pb.cc
 *.pb.h
 
