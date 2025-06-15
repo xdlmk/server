@@ -2,6 +2,7 @@
 #define COMMANDINTERFACESERVER_H
 
 #include <QObject>
+#include <QCoreApplication>
 #include <QLocalServer>
 #include <QLocalSocket>
 
@@ -19,8 +20,11 @@ public:
 private:
     QLocalServer* server = nullptr;
 
-    void handleCommand(const QString& command, QLocalSocket* socket);
+    void handleCommand(const QString& cmd, QLocalSocket* socket);
+    bool databaseStatus();
+    qint64 getMemoryUsageInKB();
 
+    static QElapsedTimer uptimeTimer;
     Logger& logger;
 };
 
