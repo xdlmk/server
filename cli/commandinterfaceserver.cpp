@@ -110,30 +110,62 @@ void CommandInterfaceServer::handleCommand(const QString& cmd, QLocalSocket* soc
         }
     }
     else if (cmd.startsWith("group-members ")) {
-        quint64 groupId = cmd.section(' ', 1).toULongLong();
-        try {
-            QList<quint64> members = DatabaseConnector::instance().getGroupManager()->getGroupMembers(groupId);
-
-            if (members.isEmpty()) {
-                socket->write("No members found in the group.\n");
+        bool fullInfo = cmd.endsWith("--full-info");
+        QStringList parts = cmd.split(' ', Qt::SkipEmptyParts);
+        if (parts.size() < 2) {
+            socket->write("Error: group ID not specified\n");
+        } else {
+            bool ok = false;
+            quint64 groupId = parts[1].toULongLong(&ok);
+            if (!ok) {
+                socket->write("Error: invalid group ID\n");
             } else {
-                QStringList memberStrings;
-                for (quint64 id : members) {
-                    memberStrings << QString::number(id);
+                try {
+                    QList<quint64> members = DatabaseConnector::instance().getGroupManager()->getGroupMembers(groupId);
+
+                    if (members.isEmpty()) {
+                        socket->write("No members found in the group.\n");
+                    } else {
+                        QStringList outputLines;
+                        for (quint64 userId : members) {
+                            QString line;
+                            if (fullInfo) {
+                                line = DatabaseConnector::instance().getUserManager()->getUserInfoFull(userId);
+                                line += "\n---";
+                            } else {
+                                line = QString::number(userId);
+                            }
+                            outputLines << line;
+                        }
+                        QString result = QString("Group Members [%1]:\n%2\n").arg(members.size()).arg(outputLines.join("\n"));
+                        socket->write(result.toUtf8());
+                    }
+                } catch (const std::exception &e) {
+                    QString errorMessage = QString("Failed to retrieve group members: %1\n").arg(e.what());
+                    socket->write(errorMessage.toUtf8());
                 }
-
-                QString result = QString("Group Members [%1]: %2\n")
-                                     .arg(members.size())
-                                     .arg(memberStrings.join(", "));
-
-                socket->write(result.toUtf8());
             }
-        } catch (const std::exception &e) {
-            QString errorMessage = QString("Failed to retrieve group members: %1\n").arg(e.what());
-            socket->write(errorMessage.toUtf8());
         }
-    }
-    else if (cmd == "status") {
+    } else if (cmd.startsWith("user-info ")) {
+        QStringList parts = cmd.split(' ', Qt::SkipEmptyParts);
+        if (parts.size() < 2) {
+            socket->write("Error: user ID not specified\n");
+        } else {
+            bool ok = false;
+            quint64 userId = parts[1].toULongLong(&ok);
+            if (!ok) {
+                socket->write("Error: invalid user ID\n");
+            } else {
+                try {
+                    QString info = DatabaseConnector::instance().getUserManager()->getUserInfoFull(userId);
+                    socket->write(info.toUtf8());
+                } catch (const std::exception &e) {
+                    QString errorMessage = QString("Failed to retrieve user info: %1\n").arg(e.what());
+                    socket->write(errorMessage.toUtf8());
+                }
+            }
+        }
+    } else if (cmd == "status") {
         QString status;
         status += "Server is running\n";
         status += "Database status: " + QString(databaseStatus() ? "ok\n" : "not working\n");

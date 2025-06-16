@@ -339,19 +339,7 @@ void UserManager::deleteUser(quint64 user_id)
     params[":id_user"] = QVariant::fromValue(user_id);
     QSqlQuery query;
 
-    if (!databaseConnector->executeQuery(query,
-                                         "SELECT COUNT(*) FROM users WHERE id_user = :id_user;",
-                                         params)) {
-
-        logger.log(Logger::DEBUG, "usermanager.cpp::deleteUser",
-                   "Query failed: " + query.lastError().text());
-        throw std::runtime_error("Query failed: " + query.lastError().text().toStdString());
-    }
-
-    if (query.next()) {
-        int count = query.value(0).toInt();
-        if(count <= 0) throw std::runtime_error("User not found");
-    } else throw std::runtime_error("User not found");
+    if(!userIdCheck(user_id)) throw std::runtime_error("User not found");
 
     if (!databaseConnector->executeQuery(query,
                                          "DELETE FROM users WHERE id_user = :id_user;",
@@ -361,6 +349,42 @@ void UserManager::deleteUser(quint64 user_id)
                    "Delete failed: " + query.lastError().text());
         throw std::runtime_error("Failed to delete user from database");
     }
+}
+
+QString UserManager::getUserInfoFull(const quint64 &userId)
+{
+    if(!userIdCheck(userId)) return QString("User ID %1 not found").arg(userId);
+
+    QMap<QString, QVariant> params;
+    params[":user_id"] = userId;
+    QSqlQuery query;
+
+    if (!databaseConnector->executeQuery(query,
+                                         "SELECT id_user, username, userlogin, phone_number, avatar_url, created_at FROM users WHERE id_user = :user_id", params)) {
+        logger.log(Logger::DEBUG, "UserManager::getUserInfoFull", "Error executing user info query: " + query.lastError().text());
+        return QString("Error: cannot get info for user ID %1").arg(userId);
+    }
+
+    if (!query.next()) {
+        return QString("User info not found for ID %1").arg(userId);
+    }
+
+    quint64 id = query.value("id_user").toULongLong();
+    QString username = query.value("username").toString();
+    QString userlogin = query.value("userlogin").toString();
+    QString phone_number = query.value("phone_number").toString();
+    QString avatar_url = query.value("avatar_url").toString();
+    QString createdAt = query.value("created_at").toString();
+
+    QString result;
+    result += QString("User ID: %1\n").arg(id);
+    result += QString("Username: %1\n").arg(username);
+    result += QString("Userlogin: %1\n").arg(userlogin);
+    result += QString("Phone number: %1\n").arg(phone_number);
+    result += QString("Avatar url: %1\n").arg(avatar_url);
+    result += QString("Created at: %1").arg(createdAt);
+
+    return result;
 }
 
 QString UserManager::hashPassword(const QString &password)
