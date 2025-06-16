@@ -10,7 +10,7 @@ int main(int argc, char *argv[])
     QCoreApplication a(argc, argv);
     ChatNetworkManager messageServer;
     FileServer fileServer;
-    CommandInterfaceServer cliServer(&messageServer);
+    CommandInterfaceServer cliServer(&messageServer, &fileServer);
 
     QObject::connect(&fileServer, &FileServer::saveFileToDatabase, &messageServer, &ChatNetworkManager::saveFileToDatabase);
     QObject::connect(&fileServer, &FileServer::setAvatarInDatabase, &messageServer, &ChatNetworkManager::setAvatarInDatabase);

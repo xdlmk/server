@@ -22,6 +22,7 @@ public:
     ~Logger();
 
     void log(LogLevel level, const QString &module, const QString &message);
+    bool setLogStatus(const QString& status);
 
 private:
     QFile logFile;

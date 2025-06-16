@@ -18,8 +18,8 @@
 
 QElapsedTimer CommandInterfaceServer::uptimeTimer;
 
-CommandInterfaceServer::CommandInterfaceServer(QObject* parent)
-    : QObject(parent), logger(Logger::instance())
+CommandInterfaceServer::CommandInterfaceServer(ChatNetworkManager* serverManager, FileServer* fileServer, QObject* parent)
+    : QObject(parent), serverManager(serverManager), fileServer(fileServer), logger(Logger::instance())
 {
     uptimeTimer.start();
     server = new QLocalServer(this);
@@ -186,6 +186,73 @@ void CommandInterfaceServer::handleCommand(const QString& cmd, QLocalSocket* soc
         status += QString("Memory usage: %1\n").arg(memoryUsage);
         socket->write(status.toUtf8());
 
+    } else if (cmd.startsWith("log-level ")) {
+        QString levelStr = cmd.section(' ', 1).trimmed().toLower();
+
+        if (levelStr == "noInfo" &&
+            levelStr == "errorsOnly" &&
+            levelStr == "fatalOnly" &&
+            levelStr == "standart") {
+            logger.setLogStatus(levelStr);
+            socket->write(QString("Log level set to " + levelStr.toUpper() + "\n").toUtf8());
+        } else {
+            socket->write(QString("Invalid log level. Available: standart, noInfo, errorsOnly, fatalOnly\n").toUtf8());
+        }
+    } else if (cmd.startsWith("start-listening ")) {
+        QStringList parts = cmd.split(' ', Qt::SkipEmptyParts);
+        QString host;
+
+        if (parts.size() < 2) {
+            host = parts[1].toLower();
+        } else host = "any";
+
+        QHostAddress address;
+        if (host == "localhost") address = QHostAddress::LocalHost;
+        else if (host == "localhostipv6") address = QHostAddress::LocalHostIPv6;
+        else if (host == "broadcast") address = QHostAddress::Broadcast;
+        else if (host == "any") address = QHostAddress::Any;
+        else if (host == "anyipv4") address = QHostAddress::AnyIPv4;
+        else if (host == "anyipv6") address = QHostAddress::AnyIPv6;
+        else socket->write(QString("Invalid host type. Available: LocalHost, LocalHostIPv6, Broadcast, Any, AnyIPv4, AnyIPv6\n").toUtf8());
+
+        try {
+            serverManager->startListening(address);
+            fileServer->startListening(address);
+        } catch(const std::exception &e) {
+            socket->write(QString(e.what()).toUtf8());
+        }
+        socket->write(QString("Started listening with mode: %1\n").arg(address.toString()).toUtf8());
+    } else if (cmd == "stop-listening") {
+        serverManager->stopListening();
+        fileServer->stopListening();
+        socket->write("Server listening is closed");
+    } else if (cmd.startsWith("restart-listening ")) {
+        QStringList parts = cmd.split(' ', Qt::SkipEmptyParts);
+        QString host;
+
+        if (parts.size() < 2) {
+            host = parts[1].toLower();
+        } else host = "any";
+
+        QHostAddress address;
+        if (host == "localhost") address = QHostAddress::LocalHost;
+        else if (host == "localhostipv6") address = QHostAddress::LocalHostIPv6;
+        else if (host == "broadcast") address = QHostAddress::Broadcast;
+        else if (host == "any") address = QHostAddress::Any;
+        else if (host == "anyipv4") address = QHostAddress::AnyIPv4;
+        else if (host == "anyipv6") address = QHostAddress::AnyIPv6;
+        else socket->write(QString("Invalid host type. Available: LocalHost, LocalHostIPv6, Broadcast, Any, AnyIPv4, AnyIPv6\n").toUtf8());
+
+        serverManager->stopListening();
+        fileServer->stopListening();
+
+        try {
+            serverManager->startListening(address);
+            fileServer->startListening(address);
+        } catch(const std::exception &e) {
+            socket->write(QString(e.what()).toUtf8());
+        }
+        socket->write(QString("Started restarted listening with mode: %1\n").arg(address.toString()).toUtf8());
     } else {
         socket->write("Unknown command\n");
     }

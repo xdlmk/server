@@ -57,6 +57,16 @@ QString buildCommand(const QCommandLineParser& parser) {
         return cmd;
     }
     if (parser.isSet("user-info")) return "user-info " + parser.value("user-info");
+    if (parser.isSet("log-level")) return "log-level " + parser.value("log-level");
+    if (parser.isSet("start-listening")) {
+        QString value = parser.value("start-listening");
+        return value.isEmpty() ? "start-listening" : ("start-listening " + value);
+    }
+    if (parser.isSet("stop-listening")) return "stop-listening";
+    if (parser.isSet("restart-listening")) {
+        QString value = parser.value("restart-listening");
+        return value.isEmpty() ? "restart-listening" : ("restart-listening " + value);
+    }
 
     return "";
 }
@@ -97,6 +107,10 @@ int main(int argc, char *argv[])
     parser.addOption({"group-members", "List members of a group", "group_id"});
     parser.addOption({"full-info", "Show full information about users in group"});
     parser.addOption({"user-info", "Show information about user by ID", "user_id"});
+    parser.addOption({"log-level", "Set log verbosity (standart, noInfo, errorsOnly, fatalOnly)", "level"});
+    parser.addOption({"start-listening", "Start listening with optional mode", "mode"});
+    parser.addOption({"stop-listening", "Stop accepting new connections"});
+    parser.addOption({"restart-listening", "Restart listening with optional mode", "mode"});
     parser.addOption({{"help","h","?"}, "Show list of available commands"});
 
     const bool parsed = parser.parse(QCoreApplication::arguments());
@@ -119,6 +133,11 @@ int main(int argc, char *argv[])
         out << "\n  --group-members <group_id>  List members of a group\n";
         out << "  --full-info                 Show detailed info for group members (used with --group-members)\n\n";
         out << "  --user-info <user_id>       Show info about a specific user\n";
+        out << "  --log-level <level>         Set log verbosity (standart, noInfo, errorsOnly, fatalOnly)\n";
+        out << "  --start-listening [mode]    Start listening for connections (default: Any)\n";
+        out << "                              mode: LocalHost | LocalHostIPv6 | Broadcast | Any | AnyIPv4 | AnyIPv6\n";
+        out << "  --stop-listening            Stop accepting new connections\n";
+        out << "  --restart-listening [mode]  Restart listening with optional address mode\n";
         out << "  -h, -?, --help              Show this help text\n";
         return 0;
     }

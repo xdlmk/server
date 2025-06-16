@@ -6,6 +6,8 @@
 #include <QLocalServer>
 #include <QLocalSocket>
 
+#include "../messageServer/chatnetworkmanager.h"
+#include "../fileServer/fileserver.h"
 #include "../Utils/logger.h"
 
 class CommandInterfaceServer : public QObject
@@ -13,7 +15,7 @@ class CommandInterfaceServer : public QObject
     Q_OBJECT
 
 public:
-    explicit CommandInterfaceServer(QObject* parent = nullptr);
+    explicit CommandInterfaceServer(ChatNetworkManager* serverManager, FileServer* fileServer, QObject* parent = nullptr);
     bool start(const QString& socketName);
     void stop();
 
@@ -25,6 +27,9 @@ private:
     qint64 getMemoryUsageInKB();
 
     static QElapsedTimer uptimeTimer;
+
+    ChatNetworkManager* serverManager;
+    FileServer* fileServer;
     Logger& logger;
 };
 
