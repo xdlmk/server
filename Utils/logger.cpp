@@ -20,9 +20,9 @@ Logger::~Logger() {
 }
 
 void Logger::log(LogLevel level, const QString &module, const QString &message) {
-    if(status == "errorsOnly" && (level == Logger::INFO || level == Logger::DEBUG)) return;
-    if(status == "noInfo" && level == Logger::INFO) return;
-    if(status == "fatalOnly" && level == Logger::INFO || Logger::DEBUG || Logger::WARN || Logger::ERROR) return;
+    if(status == "errorsonly" && (level == Logger::INFO || level == Logger::DEBUG)) return;
+    if(status == "noinfo" && level == Logger::INFO) return;
+    if(status == "fatalonly" && (level == Logger::INFO || level == Logger::DEBUG || level == Logger::WARN || level == Logger::ERROR)) return;
     QString levelString = getLevelString(level);
     QString logMessage = QString("%1 [%2] [%3] %4")
                              .arg(QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz"))

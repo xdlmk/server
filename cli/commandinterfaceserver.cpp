@@ -189,9 +189,9 @@ void CommandInterfaceServer::handleCommand(const QString& cmd, QLocalSocket* soc
     } else if (cmd.startsWith("log-level ")) {
         QString levelStr = cmd.section(' ', 1).trimmed().toLower();
 
-        if (levelStr == "noInfo" &&
-            levelStr == "errorsOnly" &&
-            levelStr == "fatalOnly" &&
+        if (levelStr == "noinfo" ||
+            levelStr == "errorsonly" ||
+            levelStr == "fatalonly" ||
             levelStr == "standart") {
             logger.setLogStatus(levelStr);
             socket->write(QString("Log level set to " + levelStr.toUpper() + "\n").toUtf8());
