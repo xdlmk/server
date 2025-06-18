@@ -103,13 +103,19 @@ QList<quint64> GroupManager::getGroupMembers(const quint64& group_id)
     QSqlQuery queryMembers;
     QMap<QString, QVariant> params;
     params[":group_id"] = group_id;
-    if (databaseConnector->executeQuery(queryMembers, "SELECT user_id FROM group_members WHERE group_id = :group_id", params)) {
-        while (queryMembers.next()) {
-            members.append(queryMembers.value(0).toInt());
-        }
-    } else {
-        logger.log(Logger::INFO,"groupmanager.cpp::getGroupMembers", "Query exec error: " + queryMembers.lastError().text());
+
+    if (!databaseConnector->executeQuery(queryMembers,
+                                         "SELECT user_id FROM group_members WHERE group_id = :group_id",
+                                         params)) {
+        QString errText = queryMembers.lastError().text();
+        logger.log(Logger::INFO, "groupmanager.cpp::getGroupMembers", "Query exec error: " + errText);
+        throw std::runtime_error("Query failed: " + errText.toStdString());
     }
+
+    while (queryMembers.next()) {
+        members.append(queryMembers.value(0).toULongLong());
+    }
+
     return members;
 }
 
@@ -272,4 +278,34 @@ QString GroupManager::getGroupName(int group_id)
 
     databaseConnector->executeQuery(queryName, "SELECT group_name FROM group_chats WHERE group_id = :group_id", paramsName) && queryName.next();
     return queryName.value(0).toString();
+}
+
+void GroupManager::deleteGroup(const quint64 &group_id)
+{
+    QMap<QString, QVariant> params;
+    params[":id_group"] = QVariant::fromValue(group_id);
+    QSqlQuery query;
+
+    if (!databaseConnector->executeQuery(query,
+                                         "SELECT COUNT(*) FROM group_chats WHERE group_id = :id_group;",
+                                         params)) {
+
+        logger.log(Logger::DEBUG, "groupmanager.cpp::deleteGroup",
+                   "Query failed: " + query.lastError().text());
+        throw std::runtime_error("Query failed: " + query.lastError().text().toStdString());
+    }
+
+    if (query.next()) {
+        int count = query.value(0).toInt();
+        if(count <= 0) throw std::runtime_error("Group not found");
+    } else throw std::runtime_error("Group not found");
+
+    if (!databaseConnector->executeQuery(query,
+                                         "DELETE FROM group_chats WHERE group_id = :id_group;",
+                                         params)) {
+
+        logger.log(Logger::DEBUG, "groupmanager.cpp::deleteGroup",
+                   "Delete failed: " + query.lastError().text());
+        throw std::runtime_error("Failed to delete group from database");
+    }
 }

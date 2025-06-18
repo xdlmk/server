@@ -34,6 +34,8 @@ public:
     QList<int> getUserGroups(int user_id);
     QString getGroupName(int group_id);
 
+    void deleteGroup(const quint64& group_id);
+
 private:
     DatabaseConnector *databaseConnector;
 

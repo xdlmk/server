@@ -16,6 +16,8 @@ public:
 
     void saveFileRecord(const QString &fileUrl);
 
+    void deleteFile(const quint64& file_id);
+
 private:
     DatabaseConnector *databaseConnector;
 

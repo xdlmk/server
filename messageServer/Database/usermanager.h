@@ -42,6 +42,9 @@ public:
 
     void setUserAvatar(const QString &avatarUrl, int user_id);
     QString getUserAvatar(int user_id);
+
+    void deleteUser(quint64 user_id);
+    QString getUserInfoFull(const quint64& userId);
 private:
     QString hashPassword(const QString &password);
     bool checkPassword(const QString &enteredPassword, const QString &storedHash);

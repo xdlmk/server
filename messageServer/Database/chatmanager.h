@@ -44,6 +44,8 @@ public:
     quint64 saveMessage(int dialogId, int senderId, int receiverId, const QString &message, const QString &fileUrl, const QString &special_type, const QString &flag);
     QByteArray loadMessages(const QByteArray &requestData);
 
+    void deleteMessage(const quint64& msg_id);
+
 private:
     QList<chats::ChatMessage> getUserMessages(const quint64 user_id, bool &failed);
     QList<int> getUserDialogs(int user_id);

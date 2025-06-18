@@ -14,6 +14,9 @@ class ChatNetworkManager : public QTcpServer {
 public:
     explicit ChatNetworkManager(QObject *parent = nullptr);
     QList<ClientHandler*> getClients();
+
+    void startListening(const QHostAddress& address);
+    void stopListening();
 protected:
     void incomingConnection(qintptr handle) Q_DECL_OVERRIDE;
 signals:

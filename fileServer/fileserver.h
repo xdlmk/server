@@ -14,6 +14,9 @@ public:
     explicit FileServer(QObject *parent = nullptr);
 
     FileHandler *getFileHandler();
+
+    void startListening(const QHostAddress &address);
+    void stopListening();
 protected:
     void incomingConnection(qintptr handle) Q_DECL_OVERRIDE;
 private slots:

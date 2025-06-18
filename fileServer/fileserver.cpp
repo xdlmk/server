@@ -18,6 +18,19 @@ FileHandler *FileServer::getFileHandler()
     return fileHandler;
 }
 
+void FileServer::startListening(const QHostAddress &address)
+{
+    if (this->isListening()) throw std::runtime_error("Server is already listening");
+    if (!this->listen(address, 2021)) throw std::runtime_error("Unable to start the server: " + this->errorString().toStdString());
+    return;
+}
+
+void FileServer::stopListening()
+{
+    if (!this->isListening()) return;
+    this->close();
+}
+
 void FileServer::incomingConnection(qintptr handle) {
     FileClientHandler *client = new FileClientHandler(handle, this, this);
     connect(client, &FileClientHandler::clientDisconnected, this, &FileServer::removeClient);

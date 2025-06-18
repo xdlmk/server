@@ -36,6 +36,19 @@ QList<ClientHandler*> ChatNetworkManager::getClients()
     return clients;
 }
 
+void ChatNetworkManager::startListening(const QHostAddress &address)
+{
+    if (this->isListening()) throw std::runtime_error("Server is already listening");
+    if (!this->listen(address, 2020)) throw std::runtime_error("Unable to start the server: " + this->errorString().toStdString());
+    return;
+}
+
+void ChatNetworkManager::stopListening()
+{
+    if (!this->isListening()) return;
+    this->close();
+}
+
 void ChatNetworkManager::incomingConnection(qintptr handle)
 {
     ClientHandler *client = new ClientHandler(handle, this, this);

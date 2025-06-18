@@ -43,7 +43,7 @@ QString MessageProcessor::personalMessageProcess(const QByteArray &data, ChatNet
     message.setSenderAvatarUrl(DatabaseConnector::instance().getUserManager()->getUserAvatar(sender_id));
     message.setReceiverLogin(DatabaseConnector::instance().getUserManager()->getUserLogin(receiver_id));
     message.setReceiverAvatarUrl(DatabaseConnector::instance().getUserManager()->getUserAvatar(receiver_id));
-    message.setTimestamp(QDateTime::currentDateTime().toString(Qt::ISODate));
+    message.setTimestamp(QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs));
 
     message.setMessageId(message_id);
     sendMessageToActiveSockets(message.serialize(&serializer), "personal_message", sender_id, receiver_id, manager);
@@ -100,7 +100,7 @@ void MessageProcessor::groupMessageProcess(const QByteArray &data, ChatNetworkMa
     message.setSenderAvatarUrl(DatabaseConnector::instance().getUserManager()->getUserAvatar(sender_id));
     message.setGroupName(DatabaseConnector::instance().getGroupManager()->getGroupName(group_id));
     message.setGroupAvatarUrl(DatabaseConnector::instance().getGroupManager()->getGroupAvatar(group_id));
-    message.setTimestamp(QDateTime::currentDateTime().toString(Qt::ISODate));
+    message.setTimestamp(QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs));
 
     quint64 message_id = DatabaseConnector::instance().getChatManager()->saveMessage(
         0, sender_id, group_id, content, fileUrl, special_type, "group");

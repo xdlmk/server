@@ -288,6 +288,36 @@ QByteArray ChatManager::loadMessages(const QByteArray &requestData)
     return response.serialize(&serializer);
 }
 
+void ChatManager::deleteMessage(const quint64 &msg_id)
+{
+    QMap<QString, QVariant> params;
+    params[":id_message"] = QVariant::fromValue(msg_id);
+    QSqlQuery query;
+
+    if (!databaseConnector->executeQuery(query,
+                                         "SELECT COUNT(*) FROM messages WHERE message_id = :id_message;",
+                                         params)) {
+
+        logger.log(Logger::DEBUG, "messagemanager.cpp::deleteMessage",
+                   "Query failed: " + query.lastError().text());
+        throw std::runtime_error("Query failed: " + query.lastError().text().toStdString());
+    }
+
+    if (query.next()) {
+        int count = query.value(0).toInt();
+        if(count <= 0) throw std::runtime_error("Message not found");
+    } else throw std::runtime_error("Message not found");
+
+    if (!databaseConnector->executeQuery(query,
+                                         "DELETE FROM messages WHERE message_id = :id_message;",
+                                         params)) {
+
+        logger.log(Logger::DEBUG, "messagemanager.cpp::deleteMessage",
+                   "Delete failed: " + query.lastError().text());
+        throw std::runtime_error("Failed to delete message from database");
+    }
+}
+
 QList<chats::ChatMessage> ChatManager::getUserMessages(const quint64 user_id, bool &failed)
 {
     if (!databaseConnector->getUserManager()->userIdCheck(user_id)) {
