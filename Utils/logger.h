@@ -24,6 +24,9 @@ public:
     void log(LogLevel level, const QString &module, const QString &message);
     bool setLogStatus(const QString& status);
 
+signals:
+    void newLogMessage(const QString& msg);
+
 private:
     QFile logFile;
     QTextStream logStream;

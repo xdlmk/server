@@ -49,6 +49,7 @@ QString buildCommand(const QCommandLineParser& parser) {
     if (parser.isSet("delete-group")) return "delete-group " + parser.value("delete-group");
     if (parser.isSet("delete-message")) return "delete-message " + parser.value("delete-message");
     if (parser.isSet("delete-file")) return "delete-file " + parser.value("delete-file");
+    if (parser.isSet("tail-logs")) return "tail-logs";
     if (parser.isSet("group-members")) {
         QString cmd = "group-members " + parser.value("group-members");
         if (parser.isSet("full-info")) {
@@ -71,10 +72,29 @@ QString buildCommand(const QCommandLineParser& parser) {
     return "";
 }
 
+int tailLogs(QCoreApplication &app) {
+    QLocalSocket *socket = new QLocalSocket(&app);
+    socket->connectToServer(SERVER_SOCKET_NAME);
+    if (!socket->waitForConnected(3000)) {
+        printResponse("Failed to connect: " + socket->errorString(), true);
+        return 1;
+    }
+    printResponse("tail-logs mode success connected.");
+    socket->write("tail-logs\n");
+    socket->flush();
+
+    QObject::connect(socket, &QLocalSocket::readyRead, [socket]() {
+        QByteArray data = socket->readAll();
+        QTextStream(stdout) << QString::fromUtf8(data);
+    });
+
+    return app.exec();
+}
+
 bool sendCommand(const QString& command, QString& response) {
     QLocalSocket socket;
     socket.connectToServer(SERVER_SOCKET_NAME);
-    if (!socket.waitForConnected(1000)) {
+    if (!socket.waitForConnected(2000)) {
         response = "Failed to connect: " + socket.errorString();
         return false;
     }
@@ -111,6 +131,7 @@ int main(int argc, char *argv[])
     parser.addOption({"start-listening", "Start listening with optional mode", "mode"});
     parser.addOption({"stop-listening", "Stop accepting new connections"});
     parser.addOption({"restart-listening", "Restart listening with optional mode", "mode"});
+    parser.addOption({"tail-logs", "Stream server logs in real-time"});
     parser.addOption({{"help","h","?"}, "Show list of available commands"});
 
     const bool parsed = parser.parse(QCoreApplication::arguments());
@@ -124,21 +145,22 @@ int main(int argc, char *argv[])
         out << "Usage: " << QCoreApplication::applicationFilePath() << " [options]\n";
         out << parser.applicationDescription() << "\n\n";
         out << "Options:\n";
-        out << "  --stop                      Stop the server\n";
-        out << "  --status                    Check server status\n";
-        out << "  --delete-user <id>          Delete user by ID\n";
-        out << "  --delete-group <group_id>   Delete group by ID\n";
-        out << "  --delete-message <msg_id>   Delete message by ID\n";
-        out << "  --delete-file <file_id>     Delete file by ID\n";
+        out << "  --stop                        Stop the server\n";
+        out << "  --status                      Check server status\n";
+        out << "  --delete-user <id>            Delete user by ID\n";
+        out << "  --delete-group <group_id>     Delete group by ID\n";
+        out << "  --delete-message <msg_id>     Delete message by ID\n";
+        out << "  --delete-file <file_id>       Delete file by ID\n";
         out << "\n  --group-members <group_id>  List members of a group\n";
-        out << "  --full-info                 Show detailed info for group members (used with --group-members)\n\n";
-        out << "  --user-info <user_id>       Show info about a specific user\n";
-        out << "  --log-level <level>         Set log verbosity (standart, noInfo, errorsOnly, fatalOnly)\n";
-        out << "  --start-listening [mode]    Start listening for connections (default: Any)\n";
-        out << "                              mode: LocalHost | LocalHostIPv6 | Broadcast | Any | AnyIPv4 | AnyIPv6\n";
-        out << "  --stop-listening            Stop accepting new connections\n";
-        out << "  --restart-listening [mode]  Restart listening with optional address mode\n";
-        out << "  -h, -?, --help              Show this help text\n";
+        out << "  --full-info                   Show detailed info for group members (used with --group-members)\n\n";
+        out << "  --user-info <user_id>         Show info about a specific user\n";
+        out << "  --log-level <level>           Set log verbosity (standart, noInfo, errorsOnly, fatalOnly)\n";
+        out << "  --start-listening [mode]      Start listening for connections (default: Any)\n";
+        out << "                                mode: LocalHost | LocalHostIPv6 | Broadcast | Any | AnyIPv4 | AnyIPv6\n";
+        out << "  --stop-listening              Stop accepting new connections\n";
+        out << "  --restart-listening [mode]    Restart listening with optional address mode\n";
+        out << "  --tail-logs                   Stream server logs in real-time\n";
+        out << "  -h, -?, --help                Show this help text\n";
         return 0;
     }
 
@@ -146,6 +168,10 @@ int main(int argc, char *argv[])
     if (command.isEmpty()) {
         printResponse("No valid command provided. Use --help for usage.", true);
         return 2;
+    }
+
+    if (command == "tail-logs") {
+        return tailLogs(app);
     }
 
     QString response;

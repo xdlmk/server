@@ -34,6 +34,7 @@ void Logger::log(LogLevel level, const QString &module, const QString &message) 
     logStream.flush();
 
     qDebug() << logMessage;
+    emit newLogMessage(logMessage);
 }
 
 bool Logger::setLogStatus(const QString &status)

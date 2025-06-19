@@ -253,6 +253,15 @@ void CommandInterfaceServer::handleCommand(const QString& cmd, QLocalSocket* soc
             socket->write(QString(e.what()).toUtf8());
         }
         socket->write(QString("Started restarted listening with mode: %1\n").arg(address.toString()).toUtf8());
+    } else if (cmd == "tail-logs") {
+        QObject::connect(&logger, &Logger::newLogMessage, socket,
+                         [socket](const QString &msg) {
+                             if (socket->state() == QLocalSocket::ConnectedState) {
+                                 socket->write((msg + "\n").toUtf8());
+                                 socket->flush();
+                             }
+                         });
+        return;
     } else {
         socket->write("Unknown command\n");
     }
